@@ -1,0 +1,1255 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<title>Songtool — tekst &amp; akkoorden</title>
+<style>
+  :root{
+    --bg:#1b1a17; --panel:#242220; --panel2:#2c2a26;
+    --ink:#f2ede4; --ink-dim:#b9b2a4; --accent:#d99b3f;
+    --accent2:#7fa694; --line:#3a372f; --mono:'Courier New', Consolas, monospace;
+    --muse:#8a6fae;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family: Georgia, 'Times New Roman', serif;
+    display:flex; flex-direction:column; height:100vh;
+  }
+  header{
+    padding:14px 20px; border-bottom:1px solid var(--line);
+    display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;
+  }
+  header h1{ font-size:18px; margin:0; font-weight:600; letter-spacing:.5px; color:var(--accent);}
+  header .sub{font-size:12px; color:var(--ink-dim); margin-top:2px;}
+  .toolbar{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+  button, .file-btn{
+    background:var(--panel2); color:var(--ink); border:1px solid var(--line);
+    padding:7px 12px; border-radius:6px; font-size:13px; cursor:pointer;
+    font-family:inherit;
+  }
+  button:hover, .file-btn:hover{ border-color:var(--accent); color:var(--accent); }
+  input[type=file]{ display:none; }
+
+  .meta-bar{
+    display:flex; align-items:center; gap:18px; flex-wrap:wrap;
+    padding:10px 20px; border-bottom:1px solid var(--line); background:var(--panel);
+    font-family: Georgia, serif; font-size:13px;
+  }
+  .meta-bar label{ display:flex; align-items:center; gap:6px; color:var(--ink-dim); }
+  .meta-bar input[type=text], .meta-bar input[type=number]{
+    background:var(--panel2); border:1px solid var(--line); color:var(--ink);
+    border-radius:5px; padding:5px 8px; font-family:inherit; font-size:13px;
+  }
+  #titleInput{ width:220px; }
+  #keyInput{ width:80px; }
+  #bpmInput{ width:80px; }
+  .chord-summary{ color:var(--accent2); font-size:12.5px; margin-left:auto; }
+
+  .storage-warning{
+    background:#4a2f1c; color:#f0c896; font-size:12px; line-height:1.5;
+    padding:8px 20px; border-bottom:1px solid var(--line);
+  }
+
+  .toggle-wrap{ display:flex; align-items:center; gap:8px; cursor:pointer; user-select:none; }
+  .toggle-wrap input{ display:none; }
+  .toggle-slider{
+    width:36px; height:20px; border-radius:20px; background:var(--panel2);
+    border:1px solid var(--line); position:relative; transition:background .2s;
+  }
+  .toggle-slider::after{
+    content:''; position:absolute; top:2px; left:2px; width:14px; height:14px;
+    border-radius:50%; background:var(--ink-dim); transition:transform .2s, background .2s;
+  }
+  .toggle-wrap input:checked + .toggle-slider{ background:var(--muse); border-color:var(--muse); }
+  .toggle-wrap input:checked + .toggle-slider::after{ transform:translateX(16px); background:#fff; }
+  .toggle-label{ font-size:13px; color:var(--ink-dim); }
+
+  .layout{ flex:1; display:flex; min-height:0; }
+
+  .sidebar{
+    width:0; overflow:hidden; background:var(--panel); border-right:1px solid var(--line);
+    display:flex; flex-direction:column; transition:width .2s ease;
+  }
+  .sidebar.open{ width:270px; }
+  .sidebar-head{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:10px 14px; border-bottom:1px solid var(--line);
+    font-size:11px; text-transform:uppercase; letter-spacing:1px; color:var(--ink-dim);
+  }
+  .sidebar-head button{ padding:4px 8px; font-size:12px; }
+  .sidebar-list{ flex:1; overflow-y:auto; padding:8px 0; }
+  .sidebar-foot{
+    padding:10px 14px; border-top:1px solid var(--line); display:flex; gap:8px; flex-wrap:wrap;
+  }
+  .sidebar-foot button, .sidebar-foot .file-btn{ font-size:11.5px; padding:5px 8px; }
+  .empty-hint{ padding:14px; font-size:12px; color:var(--ink-dim); line-height:1.5; }
+
+  .album-block{ margin-bottom:4px; }
+  .album-head{
+    display:flex; align-items:center; gap:6px; padding:7px 10px;
+    cursor:default;
+  }
+  .album-name{
+    flex:1; font-family:Georgia, serif; font-size:13.5px; font-weight:600; color:var(--ink);
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis; cursor:text;
+  }
+  .album-actions{ display:flex; gap:2px; }
+  .icon-btn{
+    background:transparent; border:none; color:var(--ink-dim); cursor:pointer;
+    font-size:13px; padding:3px 5px; border-radius:4px; line-height:1;
+  }
+  .icon-btn:hover{ background:var(--panel2); color:var(--accent); }
+  .icon-btn.small{ font-size:11px; }
+
+  .track-list{ list-style:none; margin:0; padding:0 6px 6px 6px; }
+  .track-item{
+    display:flex; align-items:center; gap:6px; padding:6px 8px; border-radius:5px;
+    font-size:13px; cursor:pointer; color:var(--ink-dim);
+  }
+  .track-item:hover{ background:var(--panel2); }
+  .track-item.active{ background:#3a2f1c; color:var(--accent); }
+  .track-item.dragging{ opacity:.4; }
+  .track-handle{ cursor:grab; color:var(--line); font-size:12px; }
+  .track-title{ flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .track-drop-line{ height:2px; background:var(--accent); margin:0 8px; border-radius:2px; }
+
+  .pane{ flex:1; display:flex; flex-direction:column; min-width:0; position:relative; }
+  .pane + .pane{ border-left:1px solid var(--line); }
+  .pane-head{
+    padding:8px 16px; font-size:11px; text-transform:uppercase; letter-spacing:1px;
+    color:var(--ink-dim); border-bottom:1px solid var(--line); background:var(--panel);
+    display:flex; justify-content:space-between; align-items:center;
+  }
+  textarea{
+    flex:1; resize:none; border:none; outline:none;
+    background:var(--panel); color:var(--ink); font-family:var(--mono);
+    font-size:14.5px; line-height:1.55; padding:16px 18px;
+  }
+  .preview{
+    flex:1; overflow-y:auto; background:#fbf7ee; color:#221f1a; padding:26px 34px;
+  }
+
+  .song-info-block{
+    border:1px solid #e3d9c4; border-radius:8px; padding:14px 18px; margin-bottom:22px;
+    background:#f3ecd9;
+  }
+  .song-info-title{ font-family:Georgia, serif; font-size:24px; margin:0 0 4px 0; }
+  .song-info-row{ font-size:13px; color:#6c6454; }
+  .song-info-row b{ color:#3a3527; }
+
+  .section-label{
+    font-family: Georgia, serif; font-weight:700; font-size:13px;
+    text-transform:uppercase; letter-spacing:1px; color:#a1652b;
+    margin:22px 0 6px 0; border-bottom:1px solid #e3d9c4; padding-bottom:3px;
+  }
+  .section-label:first-of-type{ margin-top:0; }
+  .note-line{
+    font-style:italic; color:#8a8272; font-size:13px; margin:4px 0 8px 2px;
+  }
+  .line-block{ margin-bottom:2px; }
+  .chord-row{
+    font-family:var(--mono); white-space:pre; color:#a1652b; font-weight:700;
+    font-size:13.5px; line-height:1.1;
+  }
+  .lyric-row{
+    font-family:var(--mono); white-space:pre; color:#221f1a;
+    font-size:15px; line-height:1.5;
+  }
+  .lyric-row.no-chords{ margin-top:0; }
+  .blank{ height:14px; }
+  .help{
+    font-size:12px; color:var(--ink-dim); padding:10px 16px; border-top:1px solid var(--line);
+    line-height:1.6; background:var(--panel);
+  }
+  .help code{ background:var(--panel2); padding:1px 5px; border-radius:4px; color:var(--accent2); }
+
+  .chord-popup{
+    position:fixed; z-index:50; background:var(--panel2); border:1px solid var(--accent);
+    border-radius:6px; padding:6px; box-shadow:0 4px 14px rgba(0,0,0,.4); display:none;
+  }
+  .chord-popup input{
+    background:var(--bg); color:var(--accent); border:1px solid var(--line); border-radius:4px;
+    padding:5px 7px; font-family:var(--mono); font-size:13px; width:100px; outline:none;
+  }
+  .chord-popup .hint{ font-size:10px; color:var(--ink-dim); margin-top:4px; }
+
+  .muse-panel{
+    border-top:1px solid var(--muse); background:#241f2c; padding:16px 24px;
+    max-height:0; overflow:hidden; transition:max-height .25s ease;
+  }
+  .muse-panel.open{ max-height:220px; }
+  .muse-head{ color:var(--muse); font-weight:600; font-size:14px; margin-bottom:6px; }
+  .muse-text{ font-size:12.5px; color:var(--ink-dim); line-height:1.6; max-width:700px; margin:0 0 10px 0; }
+  .muse-status{ margin-left:10px; font-size:12px; color:var(--accent2); }
+
+  .album-print-container{ display:none; }
+  .album-song-page + .album-song-page{ margin-top:40px; }
+
+  /* Fragments panel (right side) */
+  .fragments-panel{
+    width:0; overflow:hidden; background:var(--panel); border-left:1px solid var(--line);
+    display:flex; flex-direction:column; transition:width .2s ease;
+  }
+  .fragments-panel.open{ width:340px; }
+  .fragment-form{ padding:12px 14px; border-bottom:1px solid var(--line); display:flex; flex-direction:column; gap:6px; }
+  .fragment-form textarea{
+    background:var(--panel2); color:var(--ink); border:1px solid var(--line); border-radius:5px;
+    padding:8px; font-family:inherit; font-size:13px; resize:vertical; min-height:0; flex:none;
+  }
+  .tag-row{ display:flex; align-items:center; gap:6px; }
+  .tag-row label{ width:52px; flex:none; font-size:11.5px; color:var(--ink-dim); }
+  .tag-row input{
+    flex:1; background:var(--panel2); color:var(--ink); border:1px solid var(--line);
+    border-radius:5px; padding:5px 8px; font-family:inherit; font-size:12.5px;
+  }
+  .fragment-filters{
+    display:flex; flex-wrap:wrap; gap:5px; padding:10px 14px; border-bottom:1px solid var(--line);
+  }
+  .filter-chip{
+    background:var(--panel2); border:1px solid var(--line); color:var(--ink-dim);
+    border-radius:12px; padding:3px 9px; font-size:11px; cursor:pointer;
+  }
+  .filter-chip.active{ background:var(--accent); border-color:var(--accent); color:#241f2c; }
+  .fragment-list{ flex:1; overflow-y:auto; padding:10px 14px; display:flex; flex-direction:column; gap:10px; }
+  .fragment-card{
+    background:var(--panel2); border:1px solid var(--line); border-radius:8px; padding:10px 12px;
+  }
+  .fragment-text{
+    white-space:pre-wrap; font-size:13px; color:var(--ink); line-height:1.5; margin-bottom:6px;
+  }
+  .fragment-tags{ display:flex; flex-wrap:wrap; gap:4px; margin-bottom:8px; }
+  .tag-pill{
+    font-size:10.5px; padding:2px 7px; border-radius:10px; color:#241f2c;
+  }
+  .tag-pill.type{ background:var(--accent); }
+  .tag-pill.sfeer{ background:var(--accent2); }
+  .tag-pill.stanza{ background:var(--muse); color:#fff; }
+  .fragment-actions{ display:flex; gap:6px; flex-wrap:wrap; }
+  .fragment-actions button{ font-size:11px; padding:5px 8px; }
+
+  @media print{
+    header, .meta-bar, .storage-warning, .sidebar, .fragments-panel, .pane:first-child, .help, .muse-panel{ display:none; }
+    .layout{ display:block; }
+    .preview{ background:#fff; color:#000; padding:0; }
+    .chord-row{ color:#000; }
+    .song-info-block{ border-color:#000; background:#fff; }
+    body.printing-album .layout{ display:none; }
+    body.printing-album .album-print-container{ display:block; }
+    .album-song-page + .album-song-page{ page-break-before:always; margin-top:0; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>Songtool</h1>
+    <div class="sub">Tekst + akkoorden + notaties → overzichtelijke weergave</div>
+  </div>
+  <div class="toolbar">
+    <button id="libraryToggleBtn">📚 Bibliotheek</button>
+    <button id="fragmentsToggleBtn">💭 Fragmenten</button>
+    <label class="toggle-wrap">
+      <input type="checkbox" id="museToggle">
+      <span class="toggle-slider"></span>
+      <span class="toggle-label">Muze</span>
+    </label>
+    <label class="file-btn">Openen (.txt)
+      <input type="file" id="fileInput" accept=".txt,.cho,.chopro">
+    </label>
+    <button id="saveBtn">Opslaan als .txt</button>
+    <button id="printBtn">Afdrukken / PDF</button>
+    <button id="helpBtn">Syntax ▾</button>
+  </div>
+</header>
+
+<div class="meta-bar">
+  <label>Titel <input type="text" id="titleInput" placeholder="Titel van het nummer"></label>
+  <label>Toonaard <input type="text" id="keyInput" placeholder="bv. Am"></label>
+  <label>BPM <input type="number" id="bpmInput" placeholder="bv. 96" min="1"></label>
+  <div class="chord-summary" id="chordSummary">Eerste akkoord: – · Laatste akkoord: –</div>
+</div>
+<div class="storage-warning" id="storageWarning" style="display:none">
+  ⚠ Browseropslag is niet beschikbaar voor lokaal geopende bestanden in deze browser (komt vaker voor in Safari). Je bibliotheek wordt nu niet automatisch onthouden — gebruik "Opslaan als .txt" per nummer en "Exporteer bibliotheek" om je werk manueel te bewaren.
+</div>
+
+<div class="layout">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-head">
+      <span>Bibliotheek</span>
+      <button id="newAlbumBtn">+ Album</button>
+    </div>
+    <div class="sidebar-list" id="albumList"></div>
+    <div class="sidebar-foot">
+      <button id="exportLibBtn">Exporteer bibliotheek</button>
+      <label class="file-btn small">Importeer
+        <input type="file" id="importLibInput" accept=".json">
+      </label>
+    </div>
+  </aside>
+
+  <div class="pane">
+    <div class="pane-head">Invoer</div>
+    <textarea id="input" spellcheck="false"></textarea>
+    <div class="chord-popup" id="chordPopup">
+      <input type="text" id="chordPopupInput" placeholder="bv. Am">
+      <div class="hint">Enter = plaatsen · Esc = annuleren</div>
+    </div>
+    <div class="help" id="helpBox">
+      <strong>Bibliotheek:</strong> klik op 📚 om albums te tonen. Maak een album, voeg er nummers aan toe, en sleep nummers (⠿) om de volgorde te wijzigen of naar een ander album te verplaatsen. Klik op een nummer om het te openen — alles wat je typt wordt automatisch onthouden in je browser.<br>
+      <strong>Titel / toonaard / BPM:</strong> vul in bovenaan — die staan altijd duidelijk samen met het eerste en laatste akkoord, handig voor een setlist of tracklist.<br>
+      <strong>Sectie:</strong> <code>{Vers 1}</code>, <code>{Refrein}</code>, <code>{Brug}</code> — eigen namen mogen.<br>
+      <strong>Akkoord typen:</strong> zet het akkoord vlak vóór de lettergreep: <code>[G]Wake me up when [D]september ends</code>.<br>
+      <strong>Akkoord met de muis:</strong> rechterklik op de plek in de tekst waar het akkoord moet komen, typ de naam en bevestig met Enter (Esc annuleert). Dit vervangt het normale rechtermuisklik-menu in het tekstvak — gebruik Ctrl+C/V om te kopiëren/plakken.<br>
+      <strong>Notatie/aanwijzing:</strong> <code>{c: zacht, fingerpicked}</code> op een eigen regel → verschijnt cursief boven de volgende regel.<br>
+      <strong>Muze-toggle:</strong> zet 'm aan om je tekst met één klik te kopiëren, netjes geformatteerd, om te plakken in een gesprek met Claude (je Songwriting partner-project) voor een echte analyse — de tool blijft zelf volledig offline.<br>
+      <strong>Afdrukken/PDF per album:</strong> klik op 🖨 naast een albumnaam om alle nummers in tracklist-volgorde samen af te drukken of als PDF te bewaren.<br>
+      <strong>Back-up:</strong> je bibliotheek wordt lokaal in deze browser onthouden. Gebruik "Exporteer bibliotheek" af en toe om een .json-back-up te bewaren, zeker voor je browsergegevens wist of van computer wisselt.<br>
+      <strong>Lege regel</strong> = witruimte in de output.
+    </div>
+  </div>
+  <div class="pane">
+    <div class="pane-head">Weergave</div>
+    <div class="preview" id="preview"></div>
+  </div>
+
+  <aside class="fragments-panel" id="fragmentsPanel">
+    <div class="sidebar-head">
+      <span>Fragmenten</span>
+    </div>
+    <div class="fragment-form">
+      <textarea id="fragmentText" rows="3" placeholder="Nieuw tekstflard, regel, beeld, titelidee..."></textarea>
+      <div class="tag-row"><label>Type</label><input type="text" id="fragTypeInput" placeholder="bv. titel, beeld, refreinregel"></div>
+      <div class="tag-row"><label>Sfeer</label><input type="text" id="fragSfeerInput" placeholder="bv. melancholisch, speels"></div>
+      <div class="tag-row"><label>Stanza</label><input type="text" id="fragStanzaInput" placeholder="bv. couplet, brug, titel-idee"></div>
+      <button id="addFragmentBtn">+ Fragment toevoegen</button>
+    </div>
+    <div class="fragment-filters" id="fragmentFilters"></div>
+    <div class="fragment-list" id="fragmentList"></div>
+  </aside>
+</div>
+
+<div class="muse-panel" id="musePanel">
+  <div class="muse-head">🕯️ Muze — Dylan &amp; Cohen influisteren</div>
+  <p class="muse-text">Deze tool blijft volledig offline en privé. Voor een echte, doorleefde analyse — rijm, beeldspraak, spanning, structuur — kopieer je je tekst hieronder en plak je ze in een gesprek met Claude, bij voorkeur in je "Songwriting partner"-project waar de geest van Dylan en Cohen al rondwaart.</p>
+  <button id="museCopyBtn">Kopieer songtekst voor muze-analyse</button>
+  <span class="muse-status" id="museStatus"></span>
+</div>
+
+<div class="album-print-container" id="albumPrintContainer"></div>
+
+<script>
+const input = document.getElementById('input');
+const preview = document.getElementById('preview');
+const helpBox = document.getElementById('helpBox');
+const helpBtn = document.getElementById('helpBtn');
+const titleInput = document.getElementById('titleInput');
+const keyInput = document.getElementById('keyInput');
+const bpmInput = document.getElementById('bpmInput');
+const chordSummary = document.getElementById('chordSummary');
+const chordPopup = document.getElementById('chordPopup');
+const chordPopupInput = document.getElementById('chordPopupInput');
+const museToggle = document.getElementById('museToggle');
+const musePanel = document.getElementById('musePanel');
+const museCopyBtn = document.getElementById('museCopyBtn');
+const museStatus = document.getElementById('museStatus');
+const sidebar = document.getElementById('sidebar');
+const libraryToggleBtn = document.getElementById('libraryToggleBtn');
+const albumList = document.getElementById('albumList');
+const newAlbumBtn = document.getElementById('newAlbumBtn');
+const exportLibBtn = document.getElementById('exportLibBtn');
+const importLibInput = document.getElementById('importLibInput');
+const albumPrintContainer = document.getElementById('albumPrintContainer');
+const fragmentsToggleBtn = document.getElementById('fragmentsToggleBtn');
+const fragmentsPanel = document.getElementById('fragmentsPanel');
+const fragmentText = document.getElementById('fragmentText');
+const fragTypeInput = document.getElementById('fragTypeInput');
+const fragSfeerInput = document.getElementById('fragSfeerInput');
+const fragStanzaInput = document.getElementById('fragStanzaInput');
+const addFragmentBtn = document.getElementById('addFragmentBtn');
+const fragmentFilters = document.getElementById('fragmentFilters');
+const fragmentList = document.getElementById('fragmentList');
+
+helpBtn.addEventListener('click', () => {
+  helpBox.style.display = helpBox.style.display === 'none' ? 'block' : 'none';
+});
+
+const DEFAULT_LIBRARY = {
+  albums: [],
+  songs: {}
+};
+
+function escapeHtml(s){
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function parseChordLine(raw){
+  const chordRegex = /\[([^\]]+)\]/g;
+  let lyric = '';
+  let chordPositions = [];
+  let lastIndex = 0;
+  let match;
+  while ((match = chordRegex.exec(raw)) !== null) {
+    lyric += raw.slice(lastIndex, match.index);
+    chordPositions.push({ pos: lyric.length, chord: match[1] });
+    lastIndex = chordRegex.lastIndex;
+  }
+  lyric += raw.slice(lastIndex);
+
+  if (chordPositions.length === 0) {
+    return { hasChords:false, chordRow:'', lyricRow: lyric };
+  }
+
+  let chordRow = '';
+  chordPositions.forEach(cp => {
+    let pos = cp.pos;
+    if (pos < chordRow.length) pos = chordRow.length;
+    chordRow += ' '.repeat(Math.max(0, pos - chordRow.length));
+    chordRow += cp.chord;
+  });
+
+  return { hasChords:true, chordRow, lyricRow: lyric };
+}
+
+function findFirstLastChord(text){
+  const matches = [...text.matchAll(/\[([^\]]+)\]/g)].map(m => m[1]);
+  if (matches.length === 0) return { first:null, last:null };
+  return { first: matches[0], last: matches[matches.length-1] };
+}
+
+function renderLyricBody(text){
+  const lines = text.replace(/\r\n/g,'\n').split('\n');
+  let html = '';
+  for (let i = 0; i < lines.length; i++) {
+    const raw = lines[i];
+    const trimmed = raw.trim();
+
+    if (trimmed === '') {
+      html += `<div class="blank"></div>`;
+      continue;
+    }
+
+    const sectionMatch = trimmed.match(/^\{([^:}]+)\}$/);
+    if (sectionMatch) {
+      html += `<div class="section-label">${escapeHtml(sectionMatch[1])}</div>`;
+      continue;
+    }
+
+    const commentMatch = trimmed.match(/^\{c:\s*(.*)\}$/i);
+    if (commentMatch) {
+      html += `<div class="note-line">${escapeHtml(commentMatch[1])}</div>`;
+      continue;
+    }
+
+    const parsed = parseChordLine(raw);
+    html += `<div class="line-block">`;
+    if (parsed.hasChords) {
+      html += `<div class="chord-row">${escapeHtml(parsed.chordRow) || '&nbsp;'}</div>`;
+    }
+    html += `<div class="lyric-row${parsed.hasChords ? '' : ' no-chords'}">${escapeHtml(parsed.lyricRow) || '&nbsp;'}</div>`;
+    html += `</div>`;
+  }
+  return html;
+}
+
+function songInfoBlockHtml(title, key, bpm, first, last){
+  return `<div class="song-info-block">
+    <div class="song-info-title">${escapeHtml(title || '(naamloos)')}</div>
+    <div class="song-info-row">
+      <b>Toonaard:</b> ${escapeHtml(key || '–')} &nbsp;·&nbsp;
+      <b>BPM:</b> ${escapeHtml(bpm || '–')} &nbsp;·&nbsp;
+      <b>Eerste akkoord:</b> ${escapeHtml(first || '–')} &nbsp;·&nbsp;
+      <b>Laatste akkoord:</b> ${escapeHtml(last || '–')}
+    </div>
+  </div>`;
+}
+
+const LIB_KEY = 'songtool_library_v1';
+const storageWarning = document.getElementById('storageWarning');
+
+function checkStorage(){
+  try {
+    localStorage.setItem('__songtool_test__', '1');
+    localStorage.removeItem('__songtool_test__');
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+let storageOK = checkStorage();
+
+function updateStorageBanner(){
+  storageWarning.style.display = storageOK ? 'none' : 'block';
+}
+
+function genId(prefix){
+  return prefix + '-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2,8);
+}
+
+function defaultLibrary(){
+  return JSON.parse(JSON.stringify(DEFAULT_LIBRARY));
+}
+
+function loadLibrary(){
+  try {
+    const raw = localStorage.getItem(LIB_KEY);
+    if (!raw) return defaultLibrary();
+    const parsed = JSON.parse(raw);
+    if (!parsed || !Array.isArray(parsed.albums) || typeof parsed.songs !== 'object') return defaultLibrary();
+    return parsed;
+  } catch (e) {
+    return defaultLibrary();
+  }
+}
+
+let library = loadLibrary();
+let currentSongId = null;
+let currentAlbumId = null;
+let saveTimer = null;
+
+function saveLibrary(){
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    try {
+      localStorage.setItem(LIB_KEY, JSON.stringify(library));
+      if (!storageOK) { storageOK = true; updateStorageBanner(); }
+    } catch (e) {
+      storageOK = false;
+      updateStorageBanner();
+    }
+  }, 300);
+}
+
+function findAlbumOfSong(songId){
+  return library.albums.find(a => a.songIds.includes(songId)) || null;
+}
+
+function firstAvailableSongId(){
+  for (const album of library.albums) {
+    if (album.songIds.length) return { songId: album.songIds[0], albumId: album.id };
+  }
+  return null;
+}
+
+function loadSong(songId){
+  const song = library.songs[songId];
+  if (!song) return;
+  currentSongId = songId;
+  const album = findAlbumOfSong(songId);
+  currentAlbumId = album ? album.id : null;
+  titleInput.value = song.title || '';
+  keyInput.value = song.key || '';
+  bpmInput.value = song.bpm || '';
+  input.value = song.lyrics || '';
+  updatePreview();
+  renderSidebar();
+}
+
+function clearEditorEmptyState(){
+  currentSongId = null;
+  currentAlbumId = null;
+  titleInput.value = '';
+  keyInput.value = '';
+  bpmInput.value = '';
+  input.value = '';
+  updatePreview();
+}
+
+function persistCurrentSongFromEditor(){
+  if (!currentSongId || !library.songs[currentSongId]) return;
+  const song = library.songs[currentSongId];
+  song.title = titleInput.value;
+  song.key = keyInput.value;
+  song.bpm = bpmInput.value;
+  song.lyrics = input.value;
+  saveLibrary();
+  updateActiveTrackLabel();
+}
+
+function updateActiveTrackLabel(){
+  if (!currentSongId) return;
+  const el = albumList.querySelector(`.track-item[data-song-id="${CSS.escape(currentSongId)}"] .track-title`);
+  if (el) el.textContent = titleInput.value.trim() || '(naamloos nummer)';
+}
+
+function updatePreview(){
+  const text = input.value;
+  const title = titleInput.value.trim();
+  const key = keyInput.value.trim();
+  const bpm = bpmInput.value.trim();
+  const { first, last } = findFirstLastChord(text);
+
+  chordSummary.textContent = `Eerste akkoord: ${first || '–'} · Laatste akkoord: ${last || '–'}`;
+  preview.innerHTML = songInfoBlockHtml(title, key, bpm, first, last) + renderLyricBody(text);
+}
+
+[input, titleInput, keyInput, bpmInput].forEach(el => {
+  el.addEventListener('input', () => {
+    updatePreview();
+    persistCurrentSongFromEditor();
+  });
+});
+
+function renderSidebar(){
+  albumList.innerHTML = '';
+
+  if (library.albums.length === 0) {
+    const hint = document.createElement('div');
+    hint.className = 'empty-hint';
+    hint.textContent = 'Nog geen albums. Klik op "+ Album" om te beginnen.';
+    albumList.appendChild(hint);
+    return;
+  }
+
+  library.albums.forEach(album => {
+    const block = document.createElement('div');
+    block.className = 'album-block';
+    block.dataset.albumId = album.id;
+
+    const head = document.createElement('div');
+    head.className = 'album-head';
+
+    const name = document.createElement('span');
+    name.className = 'album-name';
+    name.textContent = album.name;
+    name.title = 'Dubbelklik om te hernoemen';
+    name.addEventListener('dblclick', () => renameAlbum(album.id));
+
+    const actions = document.createElement('span');
+    actions.className = 'album-actions';
+    actions.innerHTML = `
+      <button class="icon-btn" data-action="add-song" title="Nieuw nummer">＋</button>
+      <button class="icon-btn" data-action="print-album" title="Album afdrukken / PDF">🖨</button>
+      <button class="icon-btn" data-action="delete-album" title="Album verwijderen">🗑</button>
+    `;
+    actions.querySelector('[data-action="add-song"]').addEventListener('click', () => newSong(album.id));
+    actions.querySelector('[data-action="print-album"]').addEventListener('click', () => printAlbum(album.id));
+    actions.querySelector('[data-action="delete-album"]').addEventListener('click', () => deleteAlbum(album.id));
+
+    head.appendChild(name);
+    head.appendChild(actions);
+    block.appendChild(head);
+
+    const list = document.createElement('ul');
+    list.className = 'track-list';
+    list.dataset.albumId = album.id;
+
+    album.songIds.forEach(songId => {
+      const song = library.songs[songId];
+      if (!song) return;
+      const li = document.createElement('li');
+      li.className = 'track-item' + (songId === currentSongId ? ' active' : '');
+      li.draggable = true;
+      li.dataset.songId = songId;
+      li.dataset.albumId = album.id;
+      li.innerHTML = `
+        <span class="track-handle">⠿</span>
+        <span class="track-title">${escapeHtml(song.title || '(naamloos nummer)')}</span>
+        <button class="icon-btn small" data-action="delete-song" title="Verwijderen">🗑</button>
+      `;
+      li.addEventListener('click', (e) => {
+        if (e.target.closest('[data-action="delete-song"]')) return;
+        loadSong(songId);
+      });
+      li.querySelector('[data-action="delete-song"]').addEventListener('click', (e) => {
+        e.stopPropagation();
+        deleteSong(songId);
+      });
+      attachDragHandlers(li);
+      list.appendChild(li);
+    });
+
+    attachDropHandlers(list);
+    block.appendChild(list);
+    albumList.appendChild(block);
+  });
+}
+
+function newAlbum(){
+  const name = prompt('Naam van het nieuwe album:', '');
+  if (name === null) return;
+  const trimmed = name.trim();
+  if (!trimmed) return;
+  const id = genId('album');
+  library.albums.push({ id, name: trimmed, songIds: [] });
+  saveLibrary();
+  renderSidebar();
+}
+
+function renameAlbum(albumId){
+  const album = library.albums.find(a => a.id === albumId);
+  if (!album) return;
+  const name = prompt('Nieuwe naam voor dit album:', album.name);
+  if (name === null) return;
+  const trimmed = name.trim();
+  if (!trimmed) return;
+  album.name = trimmed;
+  saveLibrary();
+  renderSidebar();
+}
+
+function deleteAlbum(albumId){
+  const album = library.albums.find(a => a.id === albumId);
+  if (!album) return;
+  if (!confirm(`Album "${album.name}" en alle ${album.songIds.length} bijhorende nummer(s) verwijderen?`)) return;
+  const hadCurrent = album.songIds.includes(currentSongId);
+  album.songIds.forEach(id => delete library.songs[id]);
+  library.albums = library.albums.filter(a => a.id !== albumId);
+  saveLibrary();
+  if (hadCurrent) {
+    const next = firstAvailableSongId();
+    next ? loadSong(next.songId) : clearEditorEmptyState();
+  }
+  renderSidebar();
+}
+
+function newSong(albumId){
+  const album = library.albums.find(a => a.id === albumId);
+  if (!album) return;
+  const id = genId('song');
+  library.songs[id] = { id, title: 'Nieuw nummer', key: '', bpm: '', lyrics: '' };
+  album.songIds.push(id);
+  saveLibrary();
+  loadSong(id);
+  titleInput.focus();
+  titleInput.select();
+}
+
+function deleteSong(songId){
+  const song = library.songs[songId];
+  if (!song) return;
+  if (!confirm(`Nummer "${song.title || '(naamloos nummer)'}" verwijderen?`)) return;
+  library.albums.forEach(a => { a.songIds = a.songIds.filter(id => id !== songId); });
+  delete library.songs[songId];
+  saveLibrary();
+  if (songId === currentSongId) {
+    const next = firstAvailableSongId();
+    next ? loadSong(next.songId) : clearEditorEmptyState();
+  }
+  renderSidebar();
+}
+
+function getDragAfterElement(container, y){
+  const items = [...container.querySelectorAll('.track-item:not(.dragging)')];
+  return items.reduce((closest, child) => {
+    const box = child.getBoundingClientRect();
+    const offset = y - box.top - box.height / 2;
+    if (offset < 0 && offset > closest.offset) {
+      return { offset, element: child };
+    }
+    return closest;
+  }, { offset: Number.NEGATIVE_INFINITY, element: null }).element;
+}
+
+function attachDragHandlers(li){
+  li.addEventListener('dragstart', (e) => {
+    li.classList.add('dragging');
+    e.dataTransfer.setData('text/plain', JSON.stringify({
+      songId: li.dataset.songId, fromAlbumId: li.dataset.albumId
+    }));
+    e.dataTransfer.effectAllowed = 'move';
+  });
+  li.addEventListener('dragend', () => li.classList.remove('dragging'));
+}
+
+function attachDropHandlers(list){
+  list.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    const dragging = albumList.querySelector('.track-item.dragging');
+    if (!dragging) return;
+    const afterEl = getDragAfterElement(list, e.clientY);
+    if (afterEl == null) list.appendChild(dragging);
+    else list.insertBefore(dragging, afterEl);
+  });
+
+  list.addEventListener('drop', (e) => {
+    e.preventDefault();
+    let data;
+    try { data = JSON.parse(e.dataTransfer.getData('text/plain')); } catch (err) { return; }
+    if (!data || !data.songId) return;
+
+    const toAlbumId = list.dataset.albumId;
+    const fromAlbum = library.albums.find(a => a.id === data.fromAlbumId);
+    const toAlbum = library.albums.find(a => a.id === toAlbumId);
+    if (!fromAlbum || !toAlbum) return;
+
+    fromAlbum.songIds = fromAlbum.songIds.filter(id => id !== data.songId);
+    const domOrder = [...list.querySelectorAll('.track-item')].map(li => li.dataset.songId);
+    if (!domOrder.includes(data.songId)) domOrder.push(data.songId);
+    toAlbum.songIds = domOrder;
+
+    saveLibrary();
+    renderSidebar();
+  });
+}
+
+newAlbumBtn.addEventListener('click', newAlbum);
+
+exportLibBtn.addEventListener('click', () => {
+  const blob = new Blob([JSON.stringify(library, null, 2)], { type: 'application/json;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'songtool-bibliotheek.json';
+  a.click();
+  URL.revokeObjectURL(url);
+});
+
+importLibInput.addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    try {
+      const parsed = JSON.parse(ev.target.result);
+      if (!parsed || !Array.isArray(parsed.albums) || typeof parsed.songs !== 'object') {
+        alert('Dit bestand lijkt geen geldige songtool-bibliotheek te zijn.');
+        return;
+      }
+      if (!confirm('Dit vervangt je huidige bibliotheek in deze browser door de geïmporteerde versie. Doorgaan?')) return;
+      library = parsed;
+      saveLibrary();
+      const next = firstAvailableSongId();
+      next ? loadSong(next.songId) : clearEditorEmptyState();
+      renderSidebar();
+    } catch (err) {
+      alert('Kon dit bestand niet lezen als bibliotheek-JSON.');
+    }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+});
+
+libraryToggleBtn.addEventListener('click', () => {
+  sidebar.classList.toggle('open');
+});
+
+let pendingCaretPos = null;
+
+input.addEventListener('contextmenu', (e) => {
+  e.preventDefault();
+  pendingCaretPos = input.selectionStart;
+
+  const popupWidth = 130, popupHeight = 60;
+  let left = e.clientX, top = e.clientY;
+  if (left + popupWidth > window.innerWidth) left = window.innerWidth - popupWidth - 10;
+  if (top + popupHeight > window.innerHeight) top = window.innerHeight - popupHeight - 10;
+
+  chordPopup.style.left = left + 'px';
+  chordPopup.style.top = top + 'px';
+  chordPopup.style.display = 'block';
+  chordPopupInput.value = '';
+  chordPopupInput.focus();
+});
+
+function closeChordPopup(){
+  chordPopup.style.display = 'none';
+  pendingCaretPos = null;
+}
+
+function confirmChordPopup(){
+  const chord = chordPopupInput.value.trim().replace(/[\[\]]/g, '');
+  if (chord && pendingCaretPos !== null) {
+    const pos = pendingCaretPos;
+    const value = input.value;
+    const insertion = '[' + chord + ']';
+    input.value = value.slice(0, pos) + insertion + value.slice(pos);
+    const newPos = pos + insertion.length;
+    input.focus();
+    input.setSelectionRange(newPos, newPos);
+    updatePreview();
+    persistCurrentSongFromEditor();
+  }
+  closeChordPopup();
+}
+
+chordPopupInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') { e.preventDefault(); confirmChordPopup(); }
+  else if (e.key === 'Escape') { e.preventDefault(); closeChordPopup(); input.focus(); }
+});
+
+document.addEventListener('click', (e) => {
+  if (chordPopup.style.display === 'block' && !chordPopup.contains(e.target)) {
+    closeChordPopup();
+  }
+});
+
+function buildFileContent(){
+  const meta = [];
+  if (titleInput.value.trim()) meta.push('#title: ' + titleInput.value.trim());
+  if (keyInput.value.trim()) meta.push('#key: ' + keyInput.value.trim());
+  if (bpmInput.value.trim()) meta.push('#bpm: ' + bpmInput.value.trim());
+  const metaBlock = meta.length ? meta.join('\n') + '\n\n' : '';
+  return metaBlock + input.value;
+}
+
+document.getElementById('saveBtn').addEventListener('click', () => {
+  const blob = new Blob([buildFileContent()], { type: 'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  let name = titleInput.value.trim()
+    ? titleInput.value.trim().replace(/[^\w\- ]/g,'').replace(/\s+/g,'_')
+    : 'song';
+  a.href = url;
+  a.download = name + '.txt';
+  a.click();
+  URL.revokeObjectURL(url);
+});
+
+document.getElementById('fileInput').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    const raw = ev.target.result.replace(/\r\n/g, '\n');
+    const lines = raw.split('\n');
+    let idx = 0;
+    let t = '', k = '', b = '';
+    while (idx < lines.length) {
+      const m = lines[idx].match(/^#(title|key|bpm):\s*(.*)$/i);
+      if (!m) break;
+      const field = m[1].toLowerCase();
+      if (field === 'title') t = m[2];
+      if (field === 'key') k = m[2];
+      if (field === 'bpm') b = m[2];
+      idx++;
+    }
+    if (idx < lines.length && lines[idx].trim() === '') idx++;
+
+    if (!currentSongId) {
+      if (library.albums.length === 0) {
+        const albumId = genId('album');
+        library.albums.push({ id: albumId, name: 'Geïmporteerd', songIds: [] });
+      }
+      const albumId = library.albums[0].id;
+      const songId = genId('song');
+      library.songs[songId] = { id: songId, title: '', key: '', bpm: '', lyrics: '' };
+      library.albums[0].songIds.push(songId);
+      currentSongId = songId;
+      currentAlbumId = albumId;
+    }
+
+    titleInput.value = t;
+    keyInput.value = k;
+    bpmInput.value = b;
+    input.value = lines.slice(idx).join('\n');
+    updatePreview();
+    persistCurrentSongFromEditor();
+    renderSidebar();
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+});
+
+document.getElementById('printBtn').addEventListener('click', () => window.print());
+
+function printAlbum(albumId){
+  const album = library.albums.find(a => a.id === albumId);
+  if (!album || album.songIds.length === 0) {
+    alert('Dit album heeft nog geen nummers om af te drukken.');
+    return;
+  }
+  const html = album.songIds.map(songId => {
+    const song = library.songs[songId];
+    if (!song) return '';
+    const { first, last } = findFirstLastChord(song.lyrics || '');
+    return `<section class="album-song-page">
+      ${songInfoBlockHtml(song.title, song.key, song.bpm, first, last)}
+      ${renderLyricBody(song.lyrics || '')}
+    </section>`;
+  }).join('');
+
+  albumPrintContainer.innerHTML = html;
+  document.body.classList.add('printing-album');
+
+  const cleanup = () => {
+    document.body.classList.remove('printing-album');
+    albumPrintContainer.innerHTML = '';
+    window.removeEventListener('afterprint', cleanup);
+  };
+  window.addEventListener('afterprint', cleanup);
+  window.print();
+  setTimeout(cleanup, 5000);
+}
+
+museToggle.addEventListener('change', () => {
+  musePanel.classList.toggle('open', museToggle.checked);
+});
+
+function buildMuseText(){
+  const title = titleInput.value.trim() || '(naamloos)';
+  const key = keyInput.value.trim();
+  const bpm = bpmInput.value.trim();
+  let header = `Titel: ${title}`;
+  if (key) header += `\nToonaard: ${key}`;
+  if (bpm) header += `\nTempo: ${bpm} bpm`;
+
+  const lines = input.value.replace(/\r\n/g, '\n').split('\n');
+  const body = lines.map(raw => {
+    const trimmed = raw.trim();
+    if (trimmed === '') return '';
+    const sectionMatch = trimmed.match(/^\{([^:}]+)\}$/);
+    if (sectionMatch) return `— ${sectionMatch[1]} —`;
+    const commentMatch = trimmed.match(/^\{c:\s*(.*)\}$/i);
+    if (commentMatch) return `(${commentMatch[1]})`;
+    return raw.replace(/\[[^\]]+\]/g, '');
+  }).join('\n');
+
+  return header + '\n\n' + body;
+}
+
+function copyToClipboard(text){
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    return navigator.clipboard.writeText(text).catch(() => fallbackCopy(text));
+  }
+  return Promise.resolve(fallbackCopy(text));
+}
+
+function fallbackCopy(text){
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.position = 'fixed';
+  ta.style.left = '-9999px';
+  document.body.appendChild(ta);
+  ta.focus();
+  ta.select();
+  try { document.execCommand('copy'); } catch (err) {}
+  document.body.removeChild(ta);
+}
+
+// Best-effort: try to hand off to a local "museclaude://" protocol handler
+// (see muse-claude-installatie.md) that activates Claude Desktop and pastes
+// the clipboard content. Silently does nothing if not installed — the
+// clipboard copy above is always the reliable fallback.
+function tryOpenMuseClaude(){
+  try {
+    const a = document.createElement('a');
+    a.href = 'museclaude://open';
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  } catch (e) { /* protocol not registered, nothing more to do */ }
+}
+
+museCopyBtn.addEventListener('click', () => {
+  copyToClipboard(buildMuseText()).then(() => {
+    museStatus.textContent = 'Gekopieerd ✓ — plak het in de chat';
+    setTimeout(() => { museStatus.textContent = ''; }, 3000);
+    tryOpenMuseClaude();
+  });
+});
+
+// =====================================================================
+// Fragments database (tekstflarden) — global bank, tagged on 3 axes,
+// separate from the song library. A fragment can carry multiple tags per
+// axis and show up under any of them.
+// =====================================================================
+const FRAG_KEY = 'songtool_fragments_v1';
+let fragments = loadFragments();
+let fragSaveTimer = null;
+const activeFilters = { type: new Set(), sfeer: new Set(), stanza: new Set() };
+
+function loadFragments(){
+  try {
+    const raw = localStorage.getItem(FRAG_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!parsed || !Array.isArray(parsed.fragments)) return [];
+    return parsed.fragments;
+  } catch (e) {
+    return [];
+  }
+}
+
+function saveFragments(){
+  clearTimeout(fragSaveTimer);
+  fragSaveTimer = setTimeout(() => {
+    try {
+      localStorage.setItem(FRAG_KEY, JSON.stringify({ fragments }));
+      if (!storageOK) { storageOK = true; updateStorageBanner(); }
+    } catch (e) {
+      storageOK = false;
+      updateStorageBanner();
+    }
+  }, 300);
+}
+
+function parseTags(str){
+  const seen = new Set();
+  return str.split(',').map(t => t.trim()).filter(t => {
+    if (!t || seen.has(t.toLowerCase())) return false;
+    seen.add(t.toLowerCase());
+    return true;
+  });
+}
+
+function allTagsFor(axis){
+  const set = new Set();
+  fragments.forEach(f => (f.tags[axis] || []).forEach(t => set.add(t)));
+  return [...set].sort((a, b) => a.localeCompare(b));
+}
+
+function fragmentMatchesFilters(frag){
+  return ['type', 'sfeer', 'stanza'].every(axis => {
+    if (activeFilters[axis].size === 0) return true;
+    return (frag.tags[axis] || []).some(t => activeFilters[axis].has(t));
+  });
+}
+
+function addFragment(){
+  const text = fragmentText.value.trim();
+  if (!text) return;
+  fragments.unshift({
+    id: genId('frag'),
+    text,
+    tags: {
+      type: parseTags(fragTypeInput.value),
+      sfeer: parseTags(fragSfeerInput.value),
+      stanza: parseTags(fragStanzaInput.value)
+    }
+  });
+  saveFragments();
+  fragmentText.value = '';
+  fragTypeInput.value = '';
+  fragSfeerInput.value = '';
+  fragStanzaInput.value = '';
+  renderFragments();
+}
+
+function deleteFragment(fragId){
+  const frag = fragments.find(f => f.id === fragId);
+  if (!frag) return;
+  if (!confirm('Dit fragment verwijderen?')) return;
+  fragments = fragments.filter(f => f.id !== fragId);
+  saveFragments();
+  renderFragments();
+}
+
+function insertFragmentIntoSong(fragId){
+  if (!currentSongId) {
+    alert('Open eerst een nummer in de bibliotheek om een fragment in te voegen.');
+    return;
+  }
+  const frag = fragments.find(f => f.id === fragId);
+  if (!frag) return;
+  const pos = (input.selectionStart != null) ? input.selectionStart : input.value.length;
+  const value = input.value;
+  const needsNewlineBefore = pos > 0 && value[pos - 1] !== '\n';
+  const insertion = (needsNewlineBefore ? '\n' : '') + frag.text;
+  input.value = value.slice(0, pos) + insertion + value.slice(pos);
+  const newPos = pos + insertion.length;
+  input.focus();
+  input.setSelectionRange(newPos, newPos);
+  updatePreview();
+  persistCurrentSongFromEditor();
+}
+
+function buildFragmentMuseText(frag){
+  const t = frag.tags.type.join(', ') || '(geen)';
+  const s = frag.tags.sfeer.join(', ') || '(geen)';
+  const st = frag.tags.stanza.join(', ') || '(geen)';
+  return `Fragment:\n"${frag.text}"\n\nHuidige tags — type: ${t}, sfeer: ${s}, stanza: ${st}\n\nKun je voorstellen welke labels (type / sfeer / stanza) hier het beste bij passen, eventueel ontbrekende varianten voorstellen, en/of een verdere uitwerking suggereren?`;
+}
+
+function renderFragmentFilters(){
+  fragmentFilters.innerHTML = '';
+  const axes = [['type', 'Type'], ['sfeer', 'Sfeer'], ['stanza', 'Stanza']];
+  axes.forEach(([axis]) => {
+    allTagsFor(axis).forEach(tag => {
+      const chip = document.createElement('button');
+      chip.type = 'button';
+      chip.className = 'filter-chip' + (activeFilters[axis].has(tag) ? ' active' : '');
+      chip.textContent = tag;
+      chip.addEventListener('click', () => {
+        if (activeFilters[axis].has(tag)) activeFilters[axis].delete(tag);
+        else activeFilters[axis].add(tag);
+        renderFragments();
+      });
+      fragmentFilters.appendChild(chip);
+    });
+  });
+}
+
+function renderFragments(){
+  renderFragmentFilters();
+  fragmentList.innerHTML = '';
+
+  const visible = fragments.filter(fragmentMatchesFilters);
+
+  if (fragments.length === 0) {
+    const hint = document.createElement('div');
+    hint.className = 'empty-hint';
+    hint.textContent = 'Nog geen fragmenten. Typ er hierboven een in en voeg tags toe.';
+    fragmentList.appendChild(hint);
+    return;
+  }
+  if (visible.length === 0) {
+    const hint = document.createElement('div');
+    hint.className = 'empty-hint';
+    hint.textContent = 'Geen fragmenten passen bij de actieve filters.';
+    fragmentList.appendChild(hint);
+    return;
+  }
+
+  visible.forEach(frag => {
+    const card = document.createElement('div');
+    card.className = 'fragment-card';
+
+    const textEl = document.createElement('div');
+    textEl.className = 'fragment-text';
+    textEl.textContent = frag.text;
+    card.appendChild(textEl);
+
+    const tagsEl = document.createElement('div');
+    tagsEl.className = 'fragment-tags';
+    ['type', 'sfeer', 'stanza'].forEach(axis => {
+      (frag.tags[axis] || []).forEach(tag => {
+        const pill = document.createElement('span');
+        pill.className = 'tag-pill ' + axis;
+        pill.textContent = tag;
+        tagsEl.appendChild(pill);
+      });
+    });
+    card.appendChild(tagsEl);
+
+    const actions = document.createElement('div');
+    actions.className = 'fragment-actions';
+    actions.innerHTML = `
+      <button data-action="insert">➕ In songtekst</button>
+      <button data-action="muse">🕯️ Muze</button>
+      <button data-action="delete">🗑</button>
+    `;
+    actions.querySelector('[data-action="insert"]').addEventListener('click', () => insertFragmentIntoSong(frag.id));
+    actions.querySelector('[data-action="delete"]').addEventListener('click', () => deleteFragment(frag.id));
+    actions.querySelector('[data-action="muse"]').addEventListener('click', (e) => {
+      const btn = e.currentTarget;
+      copyToClipboard(buildFragmentMuseText(frag)).then(() => {
+        const original = btn.textContent;
+        btn.textContent = 'Gekopieerd ✓';
+        setTimeout(() => { btn.textContent = original; }, 2000);
+        tryOpenMuseClaude();
+      });
+    });
+    card.appendChild(actions);
+
+    fragmentList.appendChild(card);
+  });
+}
+
+addFragmentBtn.addEventListener('click', addFragment);
+fragmentsToggleBtn.addEventListener('click', () => {
+  fragmentsPanel.classList.toggle('open');
+});
+
+updateStorageBanner();
+renderSidebar();
+renderFragments();
+const boot = firstAvailableSongId();
+if (boot) loadSong(boot.songId);
+else clearEditorEmptyState();
+</script>
+</body>
+</html>
