@@ -162,6 +162,7 @@
   .lyric-row.no-chords{ margin-top:0; }
   .blank{ height:14px; }
   .help{
+    display:none;
     font-size:12px; color:var(--ink-dim); padding:10px 16px; border-top:1px solid var(--line);
     line-height:1.6; background:var(--panel);
   }
@@ -243,6 +244,32 @@
     body.printing-album .layout{ display:none; }
     body.printing-album .album-print-container{ display:block; }
     .album-song-page + .album-song-page{ page-break-before:always; margin-top:0; }
+  }
+
+  /* Mobile layout (phones) — sidebar and fragments become overlay drawers
+     instead of squeezing the editor/preview columns off-screen */
+  @media (max-width: 860px){
+    header{ position:relative; z-index:200; padding:10px 12px; }
+    header h1{ font-size:16px; }
+    header .sub{ font-size:11px; }
+    .toolbar{ gap:6px; }
+    .toolbar button, .toolbar .file-btn{ font-size:12px; padding:6px 9px; }
+    .meta-bar{ padding:8px 12px; gap:10px; }
+    #titleInput{ width:140px; }
+    .chord-summary{ width:100%; margin-left:0; order:99; }
+
+    .layout{ flex-direction:column; }
+    .pane{ min-height:44vh; }
+    .pane + .pane{ border-left:none; border-top:1px solid var(--line); }
+
+    .sidebar, .fragments-panel{
+      position:fixed; top:0; bottom:0; z-index:100;
+      box-shadow:0 0 24px rgba(0,0,0,.5); border:none;
+    }
+    .sidebar{ left:0; }
+    .sidebar.open{ width:82vw; max-width:300px; }
+    .fragments-panel{ right:0; }
+    .fragments-panel.open{ width:88vw; max-width:340px; }
   }
 </style>
 </head>
