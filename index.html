@@ -31,6 +31,7 @@
   button:hover, .file-btn:hover{ border-color:var(--accent); color:var(--accent); }
   input[type=file]{ display:none; }
 
+  /* Song info / meta bar */
   .meta-bar{
     display:flex; align-items:center; gap:18px; flex-wrap:wrap;
     padding:10px 20px; border-bottom:1px solid var(--line); background:var(--panel);
@@ -51,6 +52,7 @@
     padding:8px 20px; border-bottom:1px solid var(--line);
   }
 
+  /* Toggle switch */
   .toggle-wrap{ display:flex; align-items:center; gap:8px; cursor:pointer; user-select:none; }
   .toggle-wrap input{ display:none; }
   .toggle-slider{
@@ -67,6 +69,7 @@
 
   .layout{ flex:1; display:flex; min-height:0; }
 
+  /* Sidebar / library */
   .sidebar{
     width:0; overflow:hidden; background:var(--panel); border-right:1px solid var(--line);
     display:flex; flex-direction:column; transition:width .2s ease;
@@ -158,7 +161,13 @@
   }
   .lyric-row.no-chords{ margin-top:0; }
   .blank{ height:14px; }
+  .help{
+    font-size:12px; color:var(--ink-dim); padding:10px 16px; border-top:1px solid var(--line);
+    line-height:1.6; background:var(--panel);
+  }
+  .help code{ background:var(--panel2); padding:1px 5px; border-radius:4px; color:var(--accent2); }
 
+  /* Right-click chord popup */
   .chord-popup{
     position:fixed; z-index:50; background:var(--panel2); border:1px solid var(--accent);
     border-radius:6px; padding:6px; box-shadow:0 4px 14px rgba(0,0,0,.4); display:none;
@@ -169,6 +178,7 @@
   }
   .chord-popup .hint{ font-size:10px; color:var(--ink-dim); margin-top:4px; }
 
+  /* Muse panel */
   .muse-panel{
     border-top:1px solid var(--muse); background:#241f2c; padding:16px 24px;
     max-height:0; overflow:hidden; transition:max-height .25s ease;
@@ -178,6 +188,7 @@
   .muse-text{ font-size:12.5px; color:var(--ink-dim); line-height:1.6; max-width:700px; margin:0 0 10px 0; }
   .muse-status{ margin-left:10px; font-size:12px; color:var(--accent2); }
 
+  /* Album print (hidden unless printing) */
   .album-print-container{ display:none; }
   .album-song-page + .album-song-page{ margin-top:40px; }
 
@@ -223,36 +234,8 @@
   .fragment-actions{ display:flex; gap:6px; flex-wrap:wrap; }
   .fragment-actions button{ font-size:11px; padding:5px 8px; }
 
-  /* Fragmenten: volledig scherm op mobiel, met eigen terugknop */
-  .frag-back-btn{ display:none; }
-
-  @media (max-width: 820px){
-    .fragments-panel.open{
-      position:fixed; inset:0; width:100%; height:100%; z-index:40;
-      border-left:none;
-    }
-    body.fragments-open-mobile .layout > .pane,
-    body.fragments-open-mobile .layout > .sidebar{ display:none; }
-    .frag-back-btn{
-      display:flex; align-items:center; gap:6px; background:var(--panel2);
-      border:1px solid var(--line); color:var(--accent); border-radius:6px;
-      padding:8px 12px; font-size:13px; cursor:pointer; font-family:inherit; margin-right:8px;
-    }
-    .fragment-form{ padding:16px; gap:10px; }
-    .fragment-form textarea{ font-size:15px; padding:12px; }
-    .tag-row input{ font-size:14px; padding:8px 10px; }
-    .fragment-filters{ padding:12px 16px; }
-    .fragment-list{ padding:14px 16px; gap:14px; }
-    .fragment-card{ padding:14px 16px; border-radius:12px; }
-    .fragment-text{ font-size:15.5px; line-height:1.6; }
-  }
-
-  @page{ margin: 1.6cm; }
-
-  .section-group{ break-inside:avoid; page-break-inside:avoid; }
-
   @media print{
-    header, .meta-bar, .storage-warning, .sidebar, .fragments-panel, .pane:first-child, .muse-panel{ display:none; }
+    header, .meta-bar, .storage-warning, .sidebar, .fragments-panel, .pane:first-child, .help, .muse-panel{ display:none; }
     .layout{ display:block; }
     .preview{ background:#fff; color:#000; padding:0; }
     .chord-row{ color:#000; }
@@ -283,6 +266,7 @@
     </label>
     <button id="saveBtn">Opslaan als .txt</button>
     <button id="printBtn">Afdrukken / PDF</button>
+    <button id="helpBtn">Syntax ▾</button>
   </div>
 </header>
 
@@ -318,6 +302,18 @@
       <input type="text" id="chordPopupInput" placeholder="bv. Am">
       <div class="hint">Enter = plaatsen · Esc = annuleren</div>
     </div>
+    <div class="help" id="helpBox">
+      <strong>Bibliotheek:</strong> klik op 📚 om albums te tonen. Maak een album, voeg er nummers aan toe, en sleep nummers (⠿) om de volgorde te wijzigen of naar een ander album te verplaatsen. Klik op een nummer om het te openen — alles wat je typt wordt automatisch onthouden in je browser.<br>
+      <strong>Titel / toonaard / BPM:</strong> vul in bovenaan — die staan altijd duidelijk samen met het eerste en laatste akkoord, handig voor een setlist of tracklist.<br>
+      <strong>Sectie:</strong> <code>{Vers 1}</code>, <code>{Refrein}</code>, <code>{Brug}</code> — eigen namen mogen.<br>
+      <strong>Akkoord typen:</strong> zet het akkoord vlak vóór de lettergreep: <code>[G]Wake me up when [D]september ends</code>.<br>
+      <strong>Akkoord met de muis:</strong> rechterklik op de plek in de tekst waar het akkoord moet komen, typ de naam en bevestig met Enter (Esc annuleert). Dit vervangt het normale rechtermuisklik-menu in het tekstvak — gebruik Ctrl+C/V om te kopiëren/plakken.<br>
+      <strong>Notatie/aanwijzing:</strong> <code>{c: zacht, fingerpicked}</code> op een eigen regel → verschijnt cursief boven de volgende regel.<br>
+      <strong>Muze-toggle:</strong> zet 'm aan om je tekst met één klik te kopiëren, netjes geformatteerd, om te plakken in een gesprek met Claude (je Songwriting partner-project) voor een echte analyse — de tool blijft zelf volledig offline.<br>
+      <strong>Afdrukken/PDF per album:</strong> klik op 🖨 naast een albumnaam om alle nummers in tracklist-volgorde samen af te drukken of als PDF te bewaren.<br>
+      <strong>Back-up:</strong> je bibliotheek wordt lokaal in deze browser onthouden. Gebruik "Exporteer bibliotheek" af en toe om een .json-back-up te bewaren, zeker voor je browsergegevens wist of van computer wisselt.<br>
+      <strong>Lege regel</strong> = witruimte in de output.
+    </div>
   </div>
   <div class="pane">
     <div class="pane-head">Weergave</div>
@@ -326,7 +322,6 @@
 
   <aside class="fragments-panel" id="fragmentsPanel">
     <div class="sidebar-head">
-      <button id="fragmentsBackBtn" class="frag-back-btn">← Song</button>
       <span>Fragmenten</span>
     </div>
     <div class="fragment-form">
@@ -353,6 +348,8 @@
 <script>
 const input = document.getElementById('input');
 const preview = document.getElementById('preview');
+const helpBox = document.getElementById('helpBox');
+const helpBtn = document.getElementById('helpBtn');
 const titleInput = document.getElementById('titleInput');
 const keyInput = document.getElementById('keyInput');
 const bpmInput = document.getElementById('bpmInput');
@@ -371,7 +368,6 @@ const exportLibBtn = document.getElementById('exportLibBtn');
 const importLibInput = document.getElementById('importLibInput');
 const albumPrintContainer = document.getElementById('albumPrintContainer');
 const fragmentsToggleBtn = document.getElementById('fragmentsToggleBtn');
-const fragmentsBackBtn = document.getElementById('fragmentsBackBtn');
 const fragmentsPanel = document.getElementById('fragmentsPanel');
 const fragmentText = document.getElementById('fragmentText');
 const fragTypeInput = document.getElementById('fragTypeInput');
@@ -381,19 +377,235 @@ const addFragmentBtn = document.getElementById('addFragmentBtn');
 const fragmentFilters = document.getElementById('fragmentFilters');
 const fragmentList = document.getElementById('fragmentList');
 
+helpBtn.addEventListener('click', () => {
+  helpBox.style.display = helpBox.style.display === 'none' ? 'block' : 'none';
+});
+
 const DEFAULT_LIBRARY = {
-  albums: [],
-  songs: {}
+  albums: [
+    { id: `album-msixv4yh-agjzlk`, name: `Pieces of Mind`, songIds: [`song-msixv4yh-s62ew1`, `song-msiyjkia-icztp7`, `song-msiyopm7-3lqw7w`, `song-msiytb7n-1s4xq2`, `song-msiyuixc-01h651`, `song-msja7f5k-hunglg`] },
+  ],
+  songs: {
+    [`song-msixv4yh-s62ew1`]: { id: `song-msixv4yh-s62ew1`, title: `Love Overflow`, key: `D`, bpm: `110`, lyrics: `
+{Intro}
+[Bm A x2]
+
+{Vers 1}
+[Bm]Money and time
+Acts like [A]lemon and lime
+When you [C#m]see the future
+With a [D]different [A]mind
+
+{Vers 2}
+[Bm]Learn how to lose
+And [A]how to restart
+[C#m]Adapt and reform
+It might be the [D]hardest [A]part
+
+{Refrein}
+[D]Everything comes and [E]goes
+[D]There is so much that [A]we don’t [Bm]know
+[Bm]Take a [C#m]leap of [D]faith
+And [E]hit it [A]blow by [D]blow
+
+[Bm]The world is [C#m]old and you [D]know
+[Bm]This world is [C#m]new and you [D]know
+[E]There is a [A]love over[D]flow
+
+
+{Intro}
+[Bm A x2]
+
+{Vers 1}
+[Bm]Nothing will come [A]all by itself,
+[C#m]I should know this [D]all too [A]well
+
+{Vers 2}
+[Bm]Knowledge is power
+But[A] ignorance is bliss
+[C#m]Know what you choose
+And [D]what you’ll [A]miss
+
+{Refrein}
+[D]Everything comes and [E]goes
+There is [D]so much that [A]we don’t [Bm]know
+[Bm]Take a [C#m]leap of [D]faith
+And [E]hit it [A]blow by [D]blow
+
+[Bm]The world is [C#m]old and you [D]know
+[Bm]This world is [C#m]new and you [D]know
+[E]There is a [A]love over[D]flow
+
+` },
+    [`song-msiyjkia-icztp7`]: { id: `song-msiyjkia-icztp7`, title: `The Next Chapter`, key: `G`, bpm: `90`, lyrics: `{Intro}
+[G]
+{Verse}
+[G]This is the next chapter
+[G]Where I get to live twice
+[G]It's filled with tears and laughter
+[G]I'm sure I'll think it's nice
+
+[Am]Everything to see
+[Em]Everything to do
+[Bm]Nothing's old all is new
+
+{Verse}
+[G]This is the next chapter
+[G]Where I get to live twice
+[G]It's filled with tears and laughter
+[G]I'm sure I'll think it's nice
+
+[Am]Everything to see
+[Em]Everything to do
+[Bm]Nothing's old all is new
+
+{Refrain}
+[C]Follow [G]me
+[D]Follow me now right on board the
+Next Chapter [G]
+
+
+{Verse}
+[G]I'm afraid of really loud sounds
+[G]It shakes my soul so hard
+[G]I'm free nothing's out of bounds
+[G]Let me play every card
+
+[Am]Everything is large
+[Em]Everything is emotion
+[Bm]Every fluid is a potion
+
+{Refrain}
+[C]Follow [G]me
+[D]Follow me now right on board the
+Next Chapter [G]` },
+    [`song-msiyopm7-3lqw7w`]: { id: `song-msiyopm7-3lqw7w`, title: `Unplayful Sin`, key: ``, bpm: ``, lyrics: `{Verse}
+I only love when I'm feeling loved
+I play it tough when I'm feeling rough
+Never giving in to an unplayful sin
+But always hitting when it's time to fit in
+{Refrain}
+Lost in the mountains
+where the cowbells are ringing
+I dive in the fountain
+of a playful sin
+{Verse}
+Nothing is sacred, no one is sane
+For years I have tried to forget my own name
+Nothing is sacred no one is sane
+I don't know who but someone will take the blame
+{Refrain}
+Lost in the mountains
+where the cowbells are ringing
+I dive in the fountain
+of a playful sin
+
+` },
+    [`song-msiytb7n-1s4xq2`]: { id: `song-msiytb7n-1s4xq2`, title: `People don't change`, key: ``, bpm: ``, lyrics: `[E]
+[D A E]
+
+` },
+    [`song-msiyuixc-01h651`]: { id: `song-msiyuixc-01h651`, title: `Pick a God and pray`, key: ``, bpm: ``, lyrics: `Verse 1
+| C D7 | Em Em |
+| Am Am | Em Em |
+| C D7 | Em Em |
+| Am Am | Em Em |
+
+V1
+Nothing is black and white
+Except your color tv
+I won’t put a fight
+Unless you wanna see mee
+
+V1
+Nothing is left or right
+Except the distance to the sea
+Nothing is day or night
+When you decide on who to be
+
+Verse 2
+| C D7 | G Em |
+| Am Am | G G |
+| C D7 | G Em |
+| Am Am | G G |
+
+V2
+I remember everything
+Since you came around
+I was in the dark for so long
+You turned that around
+
+Chorus
+
+|  D7 | G |
+| Am C | D7 G |
+| D7 | G |
+| Am C | G Em |
+| D7 | G |
+| D7 | G |
+
+
+You said: Pick a god and pray
+Laugh at what life throws our way
+So now we pick a god and pray
+Live in love forever and a day
+Pick a god and pray
+Pick a god and pray
+
+
+V1
+Nothing is freeze or flight
+If evolution is free
+I won’t take a bite
+Unless you wanna feel me
+
+V1
+Everything comes in tides
+That’s what you have to understand
+Once you learn how to fly
+You don’t need solid land
+
+` },
+    [`song-msja7f5k-hunglg`]: { id: `song-msja7f5k-hunglg`, title: `A Vow in Eternity`, key: `B`, bpm: `166`, lyrics: `{Verse}
+[B]Looks like a [F#]burning sun
+Fire [E]on the run
+When [B]birds descend with there [F#]wings of fun[E].
+{Verse}
+[B]Looks like [F#]solid air
+Compressed [E]with all the flair
+Of a [B]newborn feeling That’s [F#]beautiful and bare[E].
+{Refrain}
+[C#m]Everything [F#]changed
+[B]Orders get [E]rearrenged
+[B]This is it [G#m]now
+[C#m]How to fit a
+[F#]Vow in eternit[B]y[ E B].
+{Verse}
+[B]Looks like a [F#]burning sun
+Fire [E]on the run
+When [B]birds descend with there [F#]wings of fun[E].
+{Verse}
+[B]Looks like [F#]solid air
+Compressed [E]with all the flair
+Of a [B]newborn feeling That’s [F#]beautiful and bare[E].
+{Refrain}
+[C#m]Everything [F#]changed
+[B]Orders get [E]rearrenged
+[B]This is it [G#m]now
+[C#m]How to fit a
+[F#]Vow in eternit[B]y[ E B].` },
+  }
 };
 
 function escapeHtml(s){
   return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
+// Parse a lyric line containing [Chord] markers into aligned chord + lyric strings
 function parseChordLine(raw){
   const chordRegex = /\[([^\]]+)\]/g;
   let lyric = '';
-  let chordPositions = [];
+  let chordPositions = []; // {pos, chord}
   let lastIndex = 0;
   let match;
   while ((match = chordRegex.exec(raw)) !== null) {
@@ -410,7 +622,7 @@ function parseChordLine(raw){
   let chordRow = '';
   chordPositions.forEach(cp => {
     let pos = cp.pos;
-    if (pos < chordRow.length) pos = chordRow.length;
+    if (pos < chordRow.length) pos = chordRow.length; // avoid overlap, push right
     chordRow += ' '.repeat(Math.max(0, pos - chordRow.length));
     chordRow += cp.chord;
   });
@@ -418,6 +630,7 @@ function parseChordLine(raw){
   return { hasChords:true, chordRow, lyricRow: lyric };
 }
 
+// Find first and last chord (in document order) across the whole lyric text
 function findFirstLastChord(text){
   const matches = [...text.matchAll(/\[([^\]]+)\]/g)].map(m => m[1]);
   if (matches.length === 0) return { first:null, last:null };
@@ -427,11 +640,6 @@ function findFirstLastChord(text){
 function renderLyricBody(text){
   const lines = text.replace(/\r\n/g,'\n').split('\n');
   let html = '';
-  let groupOpen = false;
-
-  const openGroup = () => { html += `<div class="section-group">`; groupOpen = true; };
-  const closeGroup = () => { if (groupOpen) { html += `</div>`; groupOpen = false; } };
-
   for (let i = 0; i < lines.length; i++) {
     const raw = lines[i];
     const trimmed = raw.trim();
@@ -443,13 +651,9 @@ function renderLyricBody(text){
 
     const sectionMatch = trimmed.match(/^\{([^:}]+)\}$/);
     if (sectionMatch) {
-      closeGroup();
-      openGroup();
       html += `<div class="section-label">${escapeHtml(sectionMatch[1])}</div>`;
       continue;
     }
-
-    if (!groupOpen) openGroup();
 
     const commentMatch = trimmed.match(/^\{c:\s*(.*)\}$/i);
     if (commentMatch) {
@@ -465,7 +669,6 @@ function renderLyricBody(text){
     html += `<div class="lyric-row${parsed.hasChords ? '' : ' no-chords'}">${escapeHtml(parsed.lyricRow) || '&nbsp;'}</div>`;
     html += `</div>`;
   }
-  closeGroup();
   return html;
 }
 
@@ -481,6 +684,9 @@ function songInfoBlockHtml(title, key, bpm, first, last){
   </div>`;
 }
 
+// =====================================================================
+// Library (albums + songs), persisted to localStorage
+// =====================================================================
 const LIB_KEY = 'songtool_library_v1';
 const storageWarning = document.getElementById('storageWarning');
 
@@ -549,6 +755,7 @@ function firstAvailableSongId(){
   return null;
 }
 
+// ---- Editor <-> library sync ----
 function loadSong(songId){
   const song = library.songs[songId];
   if (!song) return;
@@ -608,6 +815,7 @@ function updatePreview(){
   });
 });
 
+// ---- Sidebar rendering ----
 function renderSidebar(){
   albumList.innerHTML = '';
 
@@ -683,6 +891,7 @@ function renderSidebar(){
   });
 }
 
+// ---- Album / song CRUD ----
 function newAlbum(){
   const name = prompt('Naam van het nieuwe album:', '');
   if (name === null) return;
@@ -747,6 +956,7 @@ function deleteSong(songId){
   renderSidebar();
 }
 
+// ---- Drag & drop reordering ----
 function getDragAfterElement(container, y){
   const items = [...container.querySelectorAll('.track-item:not(.dragging)')];
   return items.reduce((closest, child) => {
@@ -791,6 +1001,7 @@ function attachDropHandlers(list){
     const toAlbum = library.albums.find(a => a.id === toAlbumId);
     if (!fromAlbum || !toAlbum) return;
 
+    // Determine new order directly from the current DOM order of this list
     fromAlbum.songIds = fromAlbum.songIds.filter(id => id !== data.songId);
     const domOrder = [...list.querySelectorAll('.track-item')].map(li => li.dataset.songId);
     if (!domOrder.includes(data.songId)) domOrder.push(data.songId);
@@ -803,6 +1014,7 @@ function attachDropHandlers(list){
 
 newAlbumBtn.addEventListener('click', newAlbum);
 
+// ---- Library import / export (backup) ----
 exportLibBtn.addEventListener('click', () => {
   const blob = new Blob([JSON.stringify(library, null, 2)], { type: 'application/json;charset=utf-8' });
   const url = URL.createObjectURL(blob);
@@ -838,10 +1050,12 @@ importLibInput.addEventListener('change', (e) => {
   e.target.value = '';
 });
 
+// ---- Sidebar toggle ----
 libraryToggleBtn.addEventListener('click', () => {
   sidebar.classList.toggle('open');
 });
 
+// ---- Right-click chord insertion ----
 let pendingCaretPos = null;
 
 input.addEventListener('contextmenu', (e) => {
@@ -892,6 +1106,7 @@ document.addEventListener('click', (e) => {
   }
 });
 
+// ---- Save / open single song as .txt ----
 function buildFileContent(){
   const meta = [];
   if (titleInput.value.trim()) meta.push('#title: ' + titleInput.value.trim());
@@ -934,6 +1149,8 @@ document.getElementById('fileInput').addEventListener('change', (e) => {
     }
     if (idx < lines.length && lines[idx].trim() === '') idx++;
 
+    // Loading a .txt file fills the currently open song slot in the library.
+    // If nothing is open yet, create a fresh song in the first album (creating one if needed).
     if (!currentSongId) {
       if (library.albums.length === 0) {
         const albumId = genId('album');
@@ -961,6 +1178,7 @@ document.getElementById('fileInput').addEventListener('change', (e) => {
 
 document.getElementById('printBtn').addEventListener('click', () => window.print());
 
+// ---- Album print / PDF export ----
 function printAlbum(albumId){
   const album = library.albums.find(a => a.id === albumId);
   if (!album || album.songIds.length === 0) {
@@ -987,9 +1205,11 @@ function printAlbum(albumId){
   };
   window.addEventListener('afterprint', cleanup);
   window.print();
+  // Fallback cleanup in case afterprint doesn't fire (some browsers/dialogs)
   setTimeout(cleanup, 5000);
 }
 
+// ---- Muze toggle ----
 museToggle.addEventListener('change', () => {
   musePanel.classList.toggle('open', museToggle.checked);
 });
@@ -1256,14 +1476,11 @@ function renderFragments(){
 }
 
 addFragmentBtn.addEventListener('click', addFragment);
+fragmentsToggleBtn.addEventListener('click', () => {
+  fragmentsPanel.classList.toggle('open');
+});
 
-function toggleFragmentsPanel(){
-  const nowOpen = fragmentsPanel.classList.toggle('open');
-  document.body.classList.toggle('fragments-open-mobile', nowOpen);
-}
-fragmentsToggleBtn.addEventListener('click', toggleFragmentsPanel);
-fragmentsBackBtn.addEventListener('click', toggleFragmentsPanel);
-
+// ---- Boot ----
 updateStorageBanner();
 renderSidebar();
 renderFragments();
