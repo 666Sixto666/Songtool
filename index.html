@@ -161,12 +161,6 @@
   }
   .lyric-row.no-chords{ margin-top:0; }
   .blank{ height:14px; }
-  .help{
-    display:none;
-    font-size:12px; color:var(--ink-dim); padding:10px 16px; border-top:1px solid var(--line);
-    line-height:1.6; background:var(--panel);
-  }
-  .help code{ background:var(--panel2); padding:1px 5px; border-radius:4px; color:var(--accent2); }
 
   /* Right-click chord popup */
   .chord-popup{
@@ -199,6 +193,7 @@
     display:flex; flex-direction:column; transition:width .2s ease;
   }
   .fragments-panel.open{ width:340px; }
+  .frag-back-btn{ display:none; }
   .fragment-form{ padding:12px 14px; border-bottom:1px solid var(--line); display:flex; flex-direction:column; gap:6px; }
   .fragment-form textarea{
     background:var(--panel2); color:var(--ink); border:1px solid var(--line); border-radius:5px;
@@ -235,8 +230,12 @@
   .fragment-actions{ display:flex; gap:6px; flex-wrap:wrap; }
   .fragment-actions button{ font-size:11px; padding:5px 8px; }
 
+  @page{ margin: 1.6cm; }
+
+  .section-group{ break-inside:avoid; page-break-inside:avoid; }
+
   @media print{
-    header, .meta-bar, .storage-warning, .sidebar, .fragments-panel, .pane:first-child, .help, .muse-panel{ display:none; }
+    header, .meta-bar, .storage-warning, .sidebar, .fragments-panel, .pane:first-child, .muse-panel{ display:none; }
     .layout{ display:block; }
     .preview{ background:#fff; color:#000; padding:0; }
     .chord-row{ color:#000; }
@@ -262,14 +261,31 @@
     .pane{ min-height:44vh; }
     .pane + .pane{ border-left:none; border-top:1px solid var(--line); }
 
-    .sidebar, .fragments-panel{
-      position:fixed; top:0; bottom:0; z-index:100;
+    .sidebar{
+      position:fixed; top:0; bottom:0; left:0; z-index:100;
       box-shadow:0 0 24px rgba(0,0,0,.5); border:none;
     }
-    .sidebar{ left:0; }
     .sidebar.open{ width:82vw; max-width:300px; }
-    .fragments-panel{ right:0; }
-    .fragments-panel.open{ width:88vw; max-width:340px; }
+
+    /* Fragmenten: volledig scherm op mobiel, songgedeelte helemaal weg */
+    .fragments-panel.open{
+      position:fixed; inset:0; width:100%; height:100%; z-index:150;
+      border-left:none;
+    }
+    body.fragments-open-mobile .layout > .pane,
+    body.fragments-open-mobile .layout > .sidebar{ display:none; }
+    .frag-back-btn{
+      display:flex; align-items:center; gap:6px; background:var(--panel2);
+      border:1px solid var(--line); color:var(--accent); border-radius:6px;
+      padding:8px 12px; font-size:13px; cursor:pointer; font-family:inherit; margin-right:8px;
+    }
+    .fragment-form{ padding:16px; gap:10px; }
+    .fragment-form textarea{ font-size:15px; padding:12px; }
+    .tag-row input{ font-size:14px; padding:8px 10px; }
+    .fragment-filters{ padding:12px 16px; }
+    .fragment-list{ padding:14px 16px; gap:14px; }
+    .fragment-card{ padding:14px 16px; border-radius:12px; }
+    .fragment-text{ font-size:15.5px; line-height:1.6; }
   }
 </style>
 </head>
@@ -293,7 +309,6 @@
     </label>
     <button id="saveBtn">Opslaan als .txt</button>
     <button id="printBtn">Afdrukken / PDF</button>
-    <button id="helpBtn">Syntax ▾</button>
   </div>
 </header>
 
@@ -329,18 +344,6 @@
       <input type="text" id="chordPopupInput" placeholder="bv. Am">
       <div class="hint">Enter = plaatsen · Esc = annuleren</div>
     </div>
-    <div class="help" id="helpBox">
-      <strong>Bibliotheek:</strong> klik op 📚 om albums te tonen. Maak een album, voeg er nummers aan toe, en sleep nummers (⠿) om de volgorde te wijzigen of naar een ander album te verplaatsen. Klik op een nummer om het te openen — alles wat je typt wordt automatisch onthouden in je browser.<br>
-      <strong>Titel / toonaard / BPM:</strong> vul in bovenaan — die staan altijd duidelijk samen met het eerste en laatste akkoord, handig voor een setlist of tracklist.<br>
-      <strong>Sectie:</strong> <code>{Vers 1}</code>, <code>{Refrein}</code>, <code>{Brug}</code> — eigen namen mogen.<br>
-      <strong>Akkoord typen:</strong> zet het akkoord vlak vóór de lettergreep: <code>[G]Wake me up when [D]september ends</code>.<br>
-      <strong>Akkoord met de muis:</strong> rechterklik op de plek in de tekst waar het akkoord moet komen, typ de naam en bevestig met Enter (Esc annuleert). Dit vervangt het normale rechtermuisklik-menu in het tekstvak — gebruik Ctrl+C/V om te kopiëren/plakken.<br>
-      <strong>Notatie/aanwijzing:</strong> <code>{c: zacht, fingerpicked}</code> op een eigen regel → verschijnt cursief boven de volgende regel.<br>
-      <strong>Muze-toggle:</strong> zet 'm aan om je tekst met één klik te kopiëren, netjes geformatteerd, om te plakken in een gesprek met Claude (je Songwriting partner-project) voor een echte analyse — de tool blijft zelf volledig offline.<br>
-      <strong>Afdrukken/PDF per album:</strong> klik op 🖨 naast een albumnaam om alle nummers in tracklist-volgorde samen af te drukken of als PDF te bewaren.<br>
-      <strong>Back-up:</strong> je bibliotheek wordt lokaal in deze browser onthouden. Gebruik "Exporteer bibliotheek" af en toe om een .json-back-up te bewaren, zeker voor je browsergegevens wist of van computer wisselt.<br>
-      <strong>Lege regel</strong> = witruimte in de output.
-    </div>
   </div>
   <div class="pane">
     <div class="pane-head">Weergave</div>
@@ -349,6 +352,7 @@
 
   <aside class="fragments-panel" id="fragmentsPanel">
     <div class="sidebar-head">
+      <button id="fragmentsBackBtn" class="frag-back-btn">← Song</button>
       <span>Fragmenten</span>
     </div>
     <div class="fragment-form">
@@ -375,8 +379,6 @@
 <script>
 const input = document.getElementById('input');
 const preview = document.getElementById('preview');
-const helpBox = document.getElementById('helpBox');
-const helpBtn = document.getElementById('helpBtn');
 const titleInput = document.getElementById('titleInput');
 const keyInput = document.getElementById('keyInput');
 const bpmInput = document.getElementById('bpmInput');
@@ -395,6 +397,7 @@ const exportLibBtn = document.getElementById('exportLibBtn');
 const importLibInput = document.getElementById('importLibInput');
 const albumPrintContainer = document.getElementById('albumPrintContainer');
 const fragmentsToggleBtn = document.getElementById('fragmentsToggleBtn');
+const fragmentsBackBtn = document.getElementById('fragmentsBackBtn');
 const fragmentsPanel = document.getElementById('fragmentsPanel');
 const fragmentText = document.getElementById('fragmentText');
 const fragTypeInput = document.getElementById('fragTypeInput');
@@ -403,10 +406,6 @@ const fragStanzaInput = document.getElementById('fragStanzaInput');
 const addFragmentBtn = document.getElementById('addFragmentBtn');
 const fragmentFilters = document.getElementById('fragmentFilters');
 const fragmentList = document.getElementById('fragmentList');
-
-helpBtn.addEventListener('click', () => {
-  helpBox.style.display = helpBox.style.display === 'none' ? 'block' : 'none';
-});
 
 const DEFAULT_LIBRARY = {
   albums: [
@@ -667,6 +666,11 @@ function findFirstLastChord(text){
 function renderLyricBody(text){
   const lines = text.replace(/\r\n/g,'\n').split('\n');
   let html = '';
+  let groupOpen = false;
+
+  const openGroup = () => { html += `<div class="section-group">`; groupOpen = true; };
+  const closeGroup = () => { if (groupOpen) { html += `</div>`; groupOpen = false; } };
+
   for (let i = 0; i < lines.length; i++) {
     const raw = lines[i];
     const trimmed = raw.trim();
@@ -678,9 +682,13 @@ function renderLyricBody(text){
 
     const sectionMatch = trimmed.match(/^\{([^:}]+)\}$/);
     if (sectionMatch) {
+      closeGroup();
+      openGroup();
       html += `<div class="section-label">${escapeHtml(sectionMatch[1])}</div>`;
       continue;
     }
+
+    if (!groupOpen) openGroup();
 
     const commentMatch = trimmed.match(/^\{c:\s*(.*)\}$/i);
     if (commentMatch) {
@@ -696,6 +704,7 @@ function renderLyricBody(text){
     html += `<div class="lyric-row${parsed.hasChords ? '' : ' no-chords'}">${escapeHtml(parsed.lyricRow) || '&nbsp;'}</div>`;
     html += `</div>`;
   }
+  closeGroup();
   return html;
 }
 
@@ -1503,9 +1512,13 @@ function renderFragments(){
 }
 
 addFragmentBtn.addEventListener('click', addFragment);
-fragmentsToggleBtn.addEventListener('click', () => {
-  fragmentsPanel.classList.toggle('open');
-});
+
+function toggleFragmentsPanel(){
+  const nowOpen = fragmentsPanel.classList.toggle('open');
+  document.body.classList.toggle('fragments-open-mobile', nowOpen);
+}
+fragmentsToggleBtn.addEventListener('click', toggleFragmentsPanel);
+fragmentsBackBtn.addEventListener('click', toggleFragmentsPanel);
 
 // ---- Boot ----
 updateStorageBanner();
