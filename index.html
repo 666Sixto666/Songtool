@@ -200,12 +200,16 @@
     background:var(--panel2); color:var(--ink); border:1px solid var(--line); border-radius:5px;
     padding:8px; font-family:inherit; font-size:13px; resize:vertical; min-height:0; flex:none;
   }
-  .tag-row{ display:flex; align-items:center; gap:6px; }
-  .tag-row label{ width:52px; flex:none; font-size:11.5px; color:var(--ink-dim); }
-  .tag-row input{
-    flex:1; background:var(--panel2); color:var(--ink); border:1px solid var(--line);
-    border-radius:5px; padding:5px 8px; font-family:inherit; font-size:12.5px;
+  .chip-picker{ display:flex; flex-direction:column; gap:5px; }
+  .chip-picker > label{ font-size:11.5px; color:var(--ink-dim); }
+  .chip-options{ display:flex; flex-wrap:wrap; gap:6px; }
+  .chip-option{
+    background:var(--panel2); border:1px solid var(--line); color:var(--ink-dim);
+    border-radius:12px; padding:5px 11px; font-size:12px; cursor:pointer; font-family:inherit;
   }
+  .chip-picker[data-axis="type"] .chip-option.selected{ background:var(--accent); border-color:var(--accent); color:#241f2c; }
+  .chip-picker[data-axis="sfeer"] .chip-option.selected{ background:var(--accent2); border-color:var(--accent2); color:#1c241f; }
+  .chip-picker[data-axis="stanza"] .chip-option.selected{ background:var(--muse); border-color:var(--muse); color:#fff; }
   .fragment-filters{
     display:flex; flex-wrap:wrap; gap:5px; padding:10px 14px; border-bottom:1px solid var(--line);
   }
@@ -276,14 +280,16 @@
     }
     body.fragments-open-mobile .layout > .pane,
     body.fragments-open-mobile .layout > .sidebar{ display:none; }
+    body.fragments-open-mobile .meta-bar,
+    body.fragments-open-mobile .storage-warning{ display:none; }
     .frag-back-btn{
       display:flex; align-items:center; gap:6px; background:var(--panel2);
       border:1px solid var(--line); color:var(--accent); border-radius:6px;
       padding:8px 12px; font-size:13px; cursor:pointer; font-family:inherit; margin-right:8px;
     }
-    .fragment-form{ padding:16px; gap:10px; }
+    .fragment-form{ padding:16px; gap:12px; }
     .fragment-form textarea{ font-size:15px; padding:12px; }
-    .tag-row input{ font-size:14px; padding:8px 10px; }
+    .chip-option{ font-size:13.5px; padding:7px 13px; }
     .fragment-filters{ padding:12px 16px; }
     .fragment-list{ padding:14px 16px; gap:14px; }
     .fragment-card{ padding:14px 16px; border-radius:12px; }
@@ -359,9 +365,9 @@
     </div>
     <div class="fragment-form">
       <textarea id="fragmentText" rows="3" placeholder="Nieuw tekstflard, regel, beeld, titelidee..."></textarea>
-      <div class="tag-row"><label>Type</label><input type="text" id="fragTypeInput" placeholder="bv. titel, beeld, refreinregel"></div>
-      <div class="tag-row"><label>Sfeer</label><input type="text" id="fragSfeerInput" placeholder="bv. melancholisch, speels"></div>
-      <div class="tag-row"><label>Stanza</label><input type="text" id="fragStanzaInput" placeholder="bv. couplet, brug, titel-idee"></div>
+      <div class="chip-picker" data-axis="type" id="typePicker"><label>Type</label><div class="chip-options" id="typeOptions"></div></div>
+      <div class="chip-picker" data-axis="sfeer" id="sfeerPicker"><label>Sfeer</label><div class="chip-options" id="sfeerOptions"></div></div>
+      <div class="chip-picker" data-axis="stanza" id="stanzaPicker"><label>Stanza</label><div class="chip-options" id="stanzaOptions"></div></div>
       <button id="addFragmentBtn">+ Fragment toevoegen</button>
     </div>
     <div class="fragment-filters" id="fragmentFilters"></div>
@@ -402,9 +408,9 @@ const fragmentsToggleBtn = document.getElementById('fragmentsToggleBtn');
 const fragmentsBackBtn = document.getElementById('fragmentsBackBtn');
 const fragmentsPanel = document.getElementById('fragmentsPanel');
 const fragmentText = document.getElementById('fragmentText');
-const fragTypeInput = document.getElementById('fragTypeInput');
-const fragSfeerInput = document.getElementById('fragSfeerInput');
-const fragStanzaInput = document.getElementById('fragStanzaInput');
+const typeOptions = document.getElementById('typeOptions');
+const sfeerOptions = document.getElementById('sfeerOptions');
+const stanzaOptions = document.getElementById('stanzaOptions');
 const addFragmentBtn = document.getElementById('addFragmentBtn');
 const fragmentFilters = document.getElementById('fragmentFilters');
 const fragmentList = document.getElementById('fragmentList');
@@ -1326,6 +1332,34 @@ let fragments = loadFragments();
 let fragSaveTimer = null;
 const activeFilters = { type: new Set(), sfeer: new Set(), stanza: new Set() };
 
+// Vaste, veelgebruikte onderverdelingen — aantikbaar, meerdere per as mogelijk
+const TAG_CATEGORIES = {
+  type: ['titel', 'beeld', 'refreinregel', 'openingsregel', 'metafoor', 'vraag', 'actie/scène'],
+  sfeer: ['melancholisch', 'hoopvol', 'donker', 'speels', 'nostalgisch', 'woedend', 'rustig', 'gespannen'],
+  stanza: ['couplet', 'refrein', 'brug', 'intro', 'outro', 'titel-idee']
+};
+const newFragTags = { type: new Set(), sfeer: new Set(), stanza: new Set() };
+
+function renderTagPickers(){
+  const containers = { type: typeOptions, sfeer: sfeerOptions, stanza: stanzaOptions };
+  Object.entries(TAG_CATEGORIES).forEach(([axis, options]) => {
+    const container = containers[axis];
+    container.innerHTML = '';
+    options.forEach(tag => {
+      const chip = document.createElement('button');
+      chip.type = 'button';
+      chip.className = 'chip-option' + (newFragTags[axis].has(tag) ? ' selected' : '');
+      chip.textContent = tag;
+      chip.addEventListener('click', () => {
+        if (newFragTags[axis].has(tag)) newFragTags[axis].delete(tag);
+        else newFragTags[axis].add(tag);
+        chip.classList.toggle('selected');
+      });
+      container.appendChild(chip);
+    });
+  });
+}
+
 function loadFragments(){
   try {
     const raw = localStorage.getItem(FRAG_KEY);
@@ -1380,16 +1414,17 @@ function addFragment(){
     id: genId('frag'),
     text,
     tags: {
-      type: parseTags(fragTypeInput.value),
-      sfeer: parseTags(fragSfeerInput.value),
-      stanza: parseTags(fragStanzaInput.value)
+      type: [...newFragTags.type],
+      sfeer: [...newFragTags.sfeer],
+      stanza: [...newFragTags.stanza]
     }
   });
   saveFragments();
   fragmentText.value = '';
-  fragTypeInput.value = '';
-  fragSfeerInput.value = '';
-  fragStanzaInput.value = '';
+  newFragTags.type.clear();
+  newFragTags.sfeer.clear();
+  newFragTags.stanza.clear();
+  renderTagPickers();
   renderFragments();
 }
 
@@ -1525,6 +1560,7 @@ fragmentsBackBtn.addEventListener('click', toggleFragmentsPanel);
 // ---- Boot ----
 updateStorageBanner();
 renderSidebar();
+renderTagPickers();
 renderFragments();
 const boot = firstAvailableSongId();
 if (boot) loadSong(boot.songId);
