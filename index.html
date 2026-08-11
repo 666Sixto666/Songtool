@@ -268,9 +268,10 @@
     }
     .sidebar.open{ width:82vw; max-width:300px; }
 
-    /* Fragmenten: volledig scherm op mobiel, songgedeelte helemaal weg */
+    /* Fragmenten: neemt de volledige beschikbare ruimte in onder de hoofding,
+       geen vaste overlay meer (die de knoppenbalk verborg) */
     .fragments-panel.open{
-      position:fixed; inset:0; width:100%; height:100%; z-index:150;
+      width:100%; flex:1 1 auto; min-height:0;
       border-left:none;
     }
     body.fragments-open-mobile .layout > .pane,
