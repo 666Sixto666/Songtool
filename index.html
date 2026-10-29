@@ -78,6 +78,34 @@ main{ flex:1; min-height:0; position:relative; }
 #weergave.passend .blad{ max-width:none; column-gap:36px; column-rule:1px solid var(--line); }
 #weergave.passend .info{ column-span:all; margin-bottom:10px; padding:6px 10px; }
 .blok{ break-inside:avoid; -webkit-column-break-inside:avoid; page-break-inside:avoid; }
+.tabs{ display:flex; gap:6px; padding:8px 10px 0; }
+.tab{ flex:1; padding:7px 8px; font-size:14px; border-radius:9px 9px 0 0; border-bottom:none; background:var(--bg); color:var(--dim); }
+.tab.aan{ background:var(--panel2); color:var(--ink); }
+.badge-dot{ position:relative; }
+.badge-dot::after{ content:''; position:absolute; top:7px; right:7px; width:9px; height:9px; border-radius:50%; background:var(--accent); }
+.bspeler{ flex:none; background:var(--panel); border-top:1px solid var(--line); padding:6px 8px calc(6px + var(--bot)); }
+.brij{ display:flex; gap:6px; align-items:center; overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:none; }
+.brij::-webkit-scrollbar{ display:none; }
+.brij + .brij{ margin-top:6px; }
+.bronnen{ display:flex; gap:6px; flex:none; }
+.speel{ flex:none; width:46px; height:46px; border-radius:50%; background:var(--accent); color:#1b1a17; border:none; font-size:18px; font-weight:700; }
+.btijd{ flex:none; font-family:var(--mono); font-size:12px; color:var(--dim); margin-left:auto; padding-left:6px; }
+.maten{ max-width:900px; margin:0 auto; }
+.maat-sectie{ margin-bottom:14px; }
+.maat-rij{ display:grid; grid-template-columns:repeat(auto-fill, minmax(78px, 1fr)); gap:4px; }
+.maat{ position:relative; border:1px solid var(--line); border-radius:8px; padding:16px 6px 8px; min-height:52px; font-family:var(--mono); font-weight:700; color:var(--accent); font-size:15px; text-align:center; cursor:pointer; }
+.maat .nr{ position:absolute; top:3px; left:6px; font-size:10px; font-weight:400; color:var(--dim); }
+.maat.nu{ background:var(--accent); color:#1b1a17; }
+.maat.nu .nr{ color:#1b1a17; }
+.mijn-sound{ max-width:760px; margin:0 auto 8px; padding:8px 12px; border-radius:10px; background:#203038; color:#bfe0ee; white-space:pre-wrap; font-size:15px; cursor:pointer; }
+.run{ font-family:var(--sans); font-style:italic; font-size:.8em; color:#9fd0e8; margin:-2px 0 8px 10px; }
+.tikbaar{ cursor:pointer; outline:1px dashed #4a7a90; outline-offset:2px; border-radius:4px; }
+.maat.met-run{ border-color:#4a7a90; }
+.run-maat{ display:block; font-family:var(--sans); font-weight:400; font-style:italic; font-size:11px; color:#9fd0e8; margin-top:3px; line-height:1.2; }
+.maat.nu .run-maat{ color:#1b1a17; }
+.mijn-notitie{ max-width:760px; margin:0 auto 12px; padding:10px 12px; border-radius:10px; background:#3a3320; color:#f0dca8; white-space:pre-wrap; font-size:15px; line-height:1.4; cursor:pointer; }
+.frag.nieuw{ border-color:var(--accent); }
+.aan-gedeeld{ color:var(--ok); border-color:var(--ok); }
 /* ---------- lades (bibliotheek links, fragmenten rechts) ---------- */
 .scherm{ position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:20; }
 .lade{ position:fixed; top:0; bottom:0; width:min(92vw, 400px); background:var(--panel); z-index:21; display:flex; flex-direction:column; transition:transform .2s ease; padding-top:var(--top); }
@@ -193,6 +221,7 @@ audio{ width:100%; margin-top:8px; }
 <div class="scherm verborgen" id="scherm-frag"></div>
 <aside class="lade rechts" id="frag">
   <div class="lade-kop"><b>Fragmenten</b><button class="plat" id="kOpname" title="Voice memo opnemen">🎙</button><button class="plat" id="kNieuwFrag">＋ Nieuw</button><button class="ib" id="kFragDicht" aria-label="Sluiten">✕</button></div>
+  <div class="tabs verborgen" id="fragTabs"><button class="tab aan" data-tab="mijn">Mijn fragmenten</button><button class="tab" data-tab="band">Van de band</button></div>
   <div class="lade-zoek"><input type="search" id="fragZoek" placeholder="Zoek in fragmenten"></div>
   <div class="filters" id="fragFilters"></div>
   <div class="lade-lijst" id="fragLijst"></div>
@@ -215,6 +244,18 @@ audio{ width:100%; margin-top:8px; }
 
 // Dropbox-app (PKCE, geen geheim nodig). Ingevuld na het aanmaken van de app; kan ook per toestel in 'Synchronisatie'.
 var DROPBOX_APP_KEY = 'elals0a8q81c5l1';
+
+// Rol: 'vol' (Tom) of 'band' (bandlid, bv. Robbe: enkel lezen, eigen notities en opnames).
+// Een uitnodigingslink (…/Songtool/?band#uitnodiging=…) zet dit toestel in bandmodus; ?volledig zet het terug.
+var ROL = (function(){
+  var z = location.search + location.hash, r = null;
+  try {
+    if (/[?&]band(&|#|$)/.test(location.search) || /uitnodiging=/.test(location.hash)) localStorage.setItem('songtool_rol', 'band');
+    if (/[?&]volledig(&|#|$)/.test(location.search)) localStorage.setItem('songtool_rol', 'vol');
+    r = localStorage.getItem('songtool_rol');
+  } catch (e) { r = /[?&]band/.test(z) ? 'band' : null; }
+  return r === 'band' ? 'band' : 'vol';
+})();
 
 var LIB_KEY = 'songtool_library_v1', FRAG_KEY = 'songtool_fragments_v1', META_KEY = 'songtool_meta_v2',
     AUTH_KEY = 'songtool_dropbox_v1', STUDIO_KEY = 'songtool_studio_v1', UI_KEY = 'songtool_ui_v1', MEMO_KEY = 'songtool_memos_v1';
@@ -266,12 +307,13 @@ function laadDb(){
   d.deleted = d.deleted || {};
   d.albumsOrderAt = d.albumsOrderAt || 0;
   d.albums.forEach(function(a){ a.songIds = a.songIds || []; a.updated = a.updated || 0; });
+  d.bandleden = d.bandleden || [];
   Object.keys(d.songs).forEach(function(id){ var s = d.songs[id]; s.id = id; s.updated = s.updated || 0; });
   d.fragments.forEach(function(f){ f.updated = f.updated || 0; f.tags = f.tags || { type: [], sfeer: [], stanza: [] }; });
   return d;
 }
 function bewaarLokaal(){
-  var lib = { albums: db.albums, songs: db.songs, deleted: db.deleted, albumsOrderAt: db.albumsOrderAt };
+  var lib = { albums: db.albums, songs: db.songs, deleted: db.deleted, albumsOrderAt: db.albumsOrderAt, bandleden: db.bandleden || [] };
   var ok = lsSet(LIB_KEY, lib) && lsSet(FRAG_KEY, { fragments: db.fragments });
   if (!ok) toast('Opslaan in deze browser lukt niet (privévenster?). Maak een back-up.');
 }
@@ -585,6 +627,7 @@ $('kMenu').addEventListener('click', function(){
     s ? menuItem('🖨', 'Afdrukken / PDF', 'Dit nummer', function(){ drukAf([s]); }) : null,
     s ? menuItem('⤓', 'Bewaar als .txt', null, function(){ bewaarTxt(s); }) : null,
     menuItem('⤒', 'Open een .txt', 'In het huidige of een nieuw nummer', function(){ $('bestandTxt').click(); }),
+    menuItem('♪', 'Band', bandUitleg(), toonBand),
     menuItem('☁', 'Synchronisatie', syncUitleg(), toonSync),
     menuItem('⛁', 'Back-up', 'Bibliotheek exporteren of importeren', toonBackup),
     menuItem('?', 'Hulp', 'Hoe schrijf je akkoorden en secties', toonHulp)]);
@@ -636,7 +679,7 @@ function renderLib(){
     var ids = a.songIds.filter(function(id){ var s = db.songs[id]; return s && (!q || norm(s.title).indexOf(q) >= 0 || norm(s.lyrics).indexOf(q) >= 0); });
     if (q && !ids.length) return;
     var blok = el('div', { klasse: 'album' });
-    blok.appendChild(el('div', { klasse: 'album-kop' }, [el('span', { klasse: 'n', tekst: a.name + ' · ' + a.songIds.length }),
+    blok.appendChild(el('div', { klasse: 'album-kop' }, [el('span', { klasse: 'n', tekst: a.name + ' · ' + a.songIds.length + (a.band ? ' · ♪ band' : '') }),
       ordenen ? el('span', { klasse: 'rij', style: 'flex:none;display:flex;gap:2px' }, [
         el('button', { klasse: 'plat', tekst: '↑', disabled: ai === 0 ? 'disabled' : null, onclick: function(){ schuifAlbum(ai, -1); } }),
         el('button', { klasse: 'plat', tekst: '↓', disabled: ai === db.albums.length - 1 ? 'disabled' : null, onclick: function(){ schuifAlbum(ai, 1); } })]) : null,
@@ -680,6 +723,8 @@ function albumMenu(a){
     menuItem('＋', 'Nummer toevoegen', null, function(){ nieuwSong(a); }),
     menuItem('✎', 'Hernoemen', null, function(){ var n = prompt('Naam van het album', a.name); if (n && n.trim()) { a.name = n.trim(); a.updated = stempel(a.updated); gewijzigd(); renderLib(); toonKop(); } }),
     menuItem('🖨', 'Album afdrukken / PDF', 'Alle nummers in tracklistvolgorde', function(){ drukAf(a.songIds.map(function(id){ return db.songs[id]; }).filter(Boolean)); }),
+    menuItem('♪', a.band ? 'Niet meer delen met de band' : 'Delen met de band', a.band ? 'Je band ziet dit album nu (alleen lezen)' : 'Tekst, akkoorden, maten en de mix voor je bandleden (alleen lezen)', function(){
+      a.band = !a.band; a.updated = stempel(a.updated); gewijzigd(); renderLib(); toast(a.band ? 'Gedeeld met de band' : 'Niet meer gedeeld'); }),
     menuItem('🗑', 'Album verwijderen', a.songIds.length ? 'Met ' + a.songIds.length + ' nummer(s)' : null, function(){ verwijderAlbum(a); })]);
 }
 function nieuwAlbum(){
@@ -721,7 +766,19 @@ function alleTags(as){ var s = {}; db.fragments.forEach(function(f){ (f.tags[as]
 $('fragZoek').addEventListener('input', renderFrag);
 $('kNieuwFrag').addEventListener('click', function(){ fragmentVel(null); });
 $('kOpname').addEventListener('click', function(){ opnemen(null); });
+var fragTab = 'mijn';
 function renderFrag(){
+  var heeftBand = (db.bandleden || []).length > 0;
+  $('fragTabs').classList.toggle('verborgen', !heeftBand);
+  if (heeftBand) {
+    var nieuw = bandNieuw();
+    [].forEach.call($('fragTabs').children, function(b){
+      b.classList.toggle('aan', b.getAttribute('data-tab') === fragTab);
+      if (b.getAttribute('data-tab') === 'band') b.textContent = 'Van de band' + (nieuw ? ' (' + nieuw + ' nieuw)' : '');
+    });
+  }
+  if (fragTab === 'band' && heeftBand) { renderVanDeBand(); return; }
+  $('fragZoek').parentNode.classList.remove('verborgen');
   var f = $('fragFilters'); f.innerHTML = '';
   ['type','sfeer','stanza'].forEach(function(as){
     alleTags(as).forEach(function(t){
@@ -781,18 +838,21 @@ function fragmentVel(x, memo){
 // ---------- voice memo's: opnemen, bewaren (ook offline), naar Dropbox, omgezet door de Studio ----------
 // Het geluid staat eerst in deze browser (IndexedDB) en gaat bij het synchroniseren naar Dropbox › memos/<id>.
 // De Studio op de laptop zet het om naar woorden en muziek en schrijft het resultaat in memos.json.
-var memoInfo = null, memoTransp = {};
+var memoInfo = null, memoTransp = {}, memoBestemming = null;
 function duurTekst(s){ s = Math.round(s || 0); return Math.floor(s / 60) + ':' + ('0' + (s % 60)).slice(-2); }
 function idb(){
   return new Promise(function(ok, nok){
-    var r = indexedDB.open('songtool', 1);
-    r.onupgradeneeded = function(){ r.result.createObjectStore('memos'); };
+    var r = indexedDB.open('songtool', 2);
+    r.onupgradeneeded = function(){
+      if (!r.result.objectStoreNames.contains('memos')) r.result.createObjectStore('memos');
+      if (!r.result.objectStoreNames.contains('audio')) r.result.createObjectStore('audio');
+    };
     r.onsuccess = function(){ ok(r.result); }; r.onerror = function(){ nok(r.error); };
   });
 }
-function idbDoe(modus, actie){
+function idbDoe(modus, actie, winkel){
   return idb().then(function(d){ return new Promise(function(ok, nok){
-    var tx = d.transaction('memos', modus), st = tx.objectStore('memos'), r = actie(st);
+    var tx = d.transaction(winkel || 'memos', modus), st = tx.objectStore(winkel || 'memos'), r = actie(st);
     tx.oncomplete = function(){ ok(r && r.result); }; tx.onerror = function(){ nok(tx.error); };
   }); });
 }
@@ -820,7 +880,7 @@ function opnemen(bestaand){
       var a = opname; opname = null;
       if (a.annuleer) return;
       var mime = rec.mimeType || type || 'audio/mp4';
-      bewaarMemo(new Blob(stukken, { type: mime }), mime, (Date.now() - t0) / 1000, bestaand);
+      (memoBestemming || bewaarMemo)(new Blob(stukken, { type: mime }), mime, (Date.now() - t0) / 1000, bestaand);
     };
     rec.start(1000);
     info.textContent = 'Opname loopt. Zing, speel of spreek je idee in.';
@@ -835,8 +895,8 @@ function kiesMemoBestand(bestaand){
   inp.addEventListener('change', function(){
     var f = inp.files[0]; if (!f) return;
     var a = new Audio(); a.preload = 'metadata';
-    a.onloadedmetadata = function(){ bewaarMemo(f, f.type || 'audio/mp4', isFinite(a.duration) ? a.duration : 0, bestaand, f.name); };
-    a.onerror = function(){ bewaarMemo(f, f.type || 'audio/mp4', 0, bestaand, f.name); };
+    a.onloadedmetadata = function(){ (memoBestemming || bewaarMemo)(f, f.type || 'audio/mp4', isFinite(a.duration) ? a.duration : 0, bestaand, f.name); };
+    a.onerror = function(){ (memoBestemming || bewaarMemo)(f, f.type || 'audio/mp4', 0, bestaand, f.name); };
     a.src = URL.createObjectURL(f);
   });
   inp.click();
@@ -849,11 +909,13 @@ function extVoor(mime, naam){
 function bewaarMemo(blob, mime, duur, bestaand, naam){
   var id = bestaand ? bestaand.id : genId('frag'), ext = extVoor(mime, naam);
   var info = { pad: '/memos/' + id + '.' + ext, type: mime, duur: Math.round(duur * 10) / 10, opgenomen: Date.now() };
-  memoBewaar(id, { blob: blob, type: mime, geupload: false, pad: info.pad }).then(function(){
+  return memoBewaar(id, { blob: blob, type: mime, geupload: false, pad: info.pad }).then(function(){
+    var frag = bestaand;
     if (bestaand) { bestaand.memo = info; bestaand.updated = stempel(bestaand.updated); }
-    else db.fragments.unshift({ id: id, created: Date.now(), text: '', tags: { type: ['memo'], sfeer: [], stanza: [] }, memo: info, updated: Date.now() });
+    else { frag = { id: id, created: Date.now(), text: '', tags: { type: ['memo'], sfeer: [], stanza: [] }, memo: info, updated: Date.now() }; db.fragments.unshift(frag); }
     gewijzigd(); renderFrag();
     toast(verbonden() ? 'Memo bewaard: de laptop zet het om naar woorden en muziek' : 'Memo bewaard op dit toestel');
+    return frag;
   }, function(){ alert('Bewaren in deze browser lukt niet (privévenster?).'); });
 }
 // in sync(): nog niet geüploade memo's naar Dropbox
@@ -1002,7 +1064,8 @@ $('bestandJson').addEventListener('change', function(e){
 // ---------- samenvoegen (zelfde nummer op twee toestellen gewijzigd) ----------
 function normaliseer(d){
   d = JSON.parse(JSON.stringify(d));
-  d.albums = (d.albums || []).map(function(a){ return { id: a.id, name: a.name, songIds: a.songIds || [], updated: a.updated || 0 }; });
+  d.albums = (d.albums || []).map(function(a){ return { id: a.id, name: a.name, songIds: a.songIds || [], updated: a.updated || 0, band: !!a.band }; });
+  d.bandleden = d.bandleden || [];
   d.songs = d.songs || {}; Object.keys(d.songs).forEach(function(id){ d.songs[id].id = id; d.songs[id].updated = d.songs[id].updated || 0; });
   d.fragments = d.fragments || []; d.fragments.forEach(function(f){ f.updated = f.updated || 0; f.tags = f.tags || { type: [], sfeer: [], stanza: [] }; });
   d.deleted = d.deleted || {}; d.albumsOrderAt = d.albumsOrderAt || 0;
@@ -1010,7 +1073,7 @@ function normaliseer(d){
 }
 function exportVorm(d){
   return { formaat: 2, app: 'Songtool', bijgewerkt: Date.now(), albums: d.albums, songs: d.songs, fragments: d.fragments,
-           deleted: d.deleted, albumsOrderAt: d.albumsOrderAt };
+           deleted: d.deleted, albumsOrderAt: d.albumsOrderAt, bandleden: d.bandleden || [] };
 }
 // Per nummer, album en fragment wint de nieuwste versie. Zonder tijdstempel (oude gegevens) en met een andere
 // inhoud blijven ze allebei bestaan ("kopie"), zodat er nooit tekst verloren gaat.
@@ -1076,11 +1139,14 @@ function voegSamen(lok, ver, bewaarBeide){
     if (!fr[f.id]) { frVolg.push(f.id); fr[f.id] = f; } else if ((f.updated || 0) > (fr[f.id].updated || 0)) fr[f.id] = f;
   });
   uit.fragments = frVolg.map(function(id){ return fr[id]; }).filter(function(f){ return !(uit.deleted[f.id] && uit.deleted[f.id] >= (f.updated || 0)); });
+  var leden = {};
+  (lok.bandleden || []).concat(ver.bandleden || []).forEach(function(l){ if (!leden[l.link] || (l.updated || 0) > (leden[l.link].updated || 0)) leden[l.link] = l; });
+  uit.bandleden = Object.keys(leden).map(function(k){ return leden[k]; }).filter(function(l){ return !l.weg; });
   return uit;
 }
 function canoniek(d){
   var songs = {}; Object.keys(d.songs).sort().forEach(function(id){ var s = d.songs[id]; songs[id] = [s.title, s.key, s.bpm, s.lyrics, s.updated]; });
-  return JSON.stringify([d.albums.map(function(a){ return [a.id, a.name, a.songIds, a.updated]; }), songs,
+  return JSON.stringify([d.albums.map(function(a){ return [a.id, a.name, a.songIds, a.updated, !!a.band]; }), songs, (d.bandleden || []).map(function(l){ return [l.link, l.updated]; }),
     d.fragments.map(function(f){ return [f.id, f.updated]; }), Object.keys(d.deleted).sort().map(function(k){ return [k, d.deleted[k]]; })]);
 }
 
@@ -1144,6 +1210,7 @@ function pasToe(nieuw){
 }
 
 function sync(){
+  if (ROL === 'band') return bandSync();
   if (!verbonden() || !navigator.onLine) { zetDot(verbonden() ? 'bezig' : '', verbonden() ? 'Offline: wordt gesynchroniseerd zodra er internet is' : null); return Promise.resolve(); }
   if (syncBezig) { syncOpnieuw = true; return Promise.resolve(); }
   syncBezig = true; zetDot('bezig', 'Synchroniseren…');
@@ -1183,9 +1250,10 @@ function sync(){
       });
     });
   }
-  return ronde().then(function(){
+  return ronde().then(function(){ return publiceerBand(); }).then(function(){
     syncFout = null; meta.laatsteSync = Date.now();
     zetDot('ok');
+    haalLeden().catch(function(){});
   }, function(e){
     syncFout = e.status === 401 ? 'toegang verlopen of ingetrokken: verbind opnieuw' : (navigator.onLine ? (e.message || 'onbekende fout').slice(0, 120) : 'offline');
     zetDot(navigator.onLine ? 'fout' : 'bezig', syncFout);
@@ -1365,6 +1433,547 @@ if (window.visualViewport) { visualViewport.addEventListener('resize', pasAan); 
 window.addEventListener('resize', pasAan);
 window.addEventListener('hashchange', function(){ var m = location.hash.match(/song=([\w\-]+)/); if (m && m[1] !== huidigId && db.songs[m[1]]) openSong(m[1]); });
 
+// =====================================================================
+// BAND — delen met bandleden (Robbe, bas). Tom deelt een album; de Studio voegt maten en audio toe
+// (map Band/ in Toms Songtool-map, via een link die enkel lezen toelaat). Een bandlid deelt zijn opnames
+// terug via zijn eigen map Gedeeld/ (ook enkel lezen voor Tom). Niemand kan andermans gegevens wijzigen.
+// =====================================================================
+function hash(t){ var h = 5381; for (var i = 0; i < t.length; i++) h = ((h << 5) + h + t.charCodeAt(i)) | 0; return String(h); }
+function scopeFout(e){
+  return e && /missing_scope|scope/.test(e.message || '') ?
+    'De Dropbox-app mist het recht om te delen. Tom zet in de Dropbox-app (dropbox.com/developers › Songtool Tom › Permissions) sharing.read en sharing.write aan; daarna Menu › Synchronisatie › Loskoppelen en opnieuw verbinden.' :
+    (e && e.message ? e.message.slice(0, 160) : 'onbekende fout');
+}
+// lezen uit een gedeelde map van iemand anders (link die enkel lezen toelaat)
+function deelLijst(url){ return rpc('files/list_folder', { path: '', shared_link: { url: url } }); }
+function deelBestand(url, pad, alsBlob){
+  return token().then(function(t){
+    return fetch('https://content.dropboxapi.com/2/sharing/get_shared_link_file', { method: 'POST',
+      headers: { Authorization: 'Bearer ' + t, 'Dropbox-API-Arg': argKop({ url: url, path: pad }) } });
+  }).then(function(r){
+    if (!r.ok) return r.text().then(function(x){ throw DbxFout(r.status, x.slice(0, 200)); });
+    return alsBlob ? r.blob() : r.text();
+  });
+}
+function maakDeelLink(pad){
+  return rpc('sharing/create_shared_link_with_settings', { path: pad, settings: {} }).then(function(d){ return d.url; }, function(e){
+    if (e.status === 409 && /shared_link_already_exists/.test(e.message)) {
+      return rpc('sharing/list_shared_links', { path: pad, direct_only: true }).then(function(d){ return d.links[0].url; });
+    }
+    throw e;
+  });
+}
+function deel(titel, tekst, url){
+  if (navigator.share) return navigator.share({ title: titel, text: tekst, url: url }).catch(function(){});
+  kopieer(tekst + '\n' + url, 'Link gekopieerd: stuur hem door');
+}
+function basisUrl(){ return location.href.split(/[?#]/)[0]; }
+
+// ---------- Toms kant ----------
+var bandStof = null;   // per bandlid-link: { versie, data }
+function bandUitleg(){
+  var al = db.albums.filter(function(a){ return a.band; }).map(function(a){ return a.name; });
+  var n = bandNieuw();
+  return (al.length ? 'Gedeeld: ' + al.join(', ') : 'Nog niets gedeeld') + (n ? ' · ' + n + ' nieuw van de band' : '');
+}
+function bandInhoud(){
+  var albums = db.albums.filter(function(a){ return a.band; }), songs = {};
+  albums.forEach(function(a){ a.songIds.forEach(function(id){ var s = db.songs[id]; if (s) songs[id] = { title: s.title, key: s.key, bpm: s.bpm, lyrics: s.lyrics }; }); });
+  return { app: 'Songtool', albums: albums.map(function(a){ return { id: a.id, name: a.name, songIds: a.songIds.filter(function(id){ return db.songs[id]; }) }; }), songs: songs };
+}
+function publiceerBand(){
+  var inh = bandInhoud(), h = hash(JSON.stringify(inh));
+  if ((!inh.albums.length && !meta.bandHash) || h === meta.bandHash) return Promise.resolve();
+  return zetBestand('/Band/band.json', JSON.stringify(Object.assign({ bijgewerkt: Date.now() }, inh)), { '.tag': 'overwrite' })
+    .then(function(){ meta.bandHash = h; bewaarMeta(); });
+}
+var ledenTijd = 0;
+function haalLeden(){
+  var leden = db.bandleden || [];
+  if (!leden.length || Date.now() - ledenTijd < 40000) return Promise.resolve();
+  ledenTijd = Date.now();
+  if (!bandStof) bandStof = lsGet('songtool_bandleden_v1', {});
+  var voor = bandNieuw();
+  return Promise.all(leden.map(function(l){
+    return deelLijst(l.link).then(function(lijst){
+      var g = zoekIn(lijst, 'gedeeld.json'); if (!g) return;
+      var versie = g.rev || g.server_modified;
+      if (bandStof[l.link] && bandStof[l.link].versie === versie) return;
+      return deelBestand(l.link, '/gedeeld.json').then(function(x){ bandStof[l.link] = { versie: versie, data: JSON.parse(x) }; });
+    }).catch(function(e){ console.warn('Bandlid', l.naam, e.message); });
+  })).then(function(){
+    lsSet('songtool_bandleden_v1', bandStof);
+    var na = bandNieuw();
+    if (na > voor) toast((na - voor === 1 ? 'Nieuw idee' : (na - voor) + ' nieuwe ideeën') + ' van de band: zie Fragmenten › Van de band');
+    toonBandBadge(); if ($('frag').classList.contains('open')) renderFrag();
+  });
+}
+function bandItems(){
+  if (!bandStof) bandStof = lsGet('songtool_bandleden_v1', {});
+  var uit = [];
+  (db.bandleden || []).forEach(function(l){
+    var d = (bandStof[l.link] || {}).data; if (!d) return;
+    (d.items || []).forEach(function(x){ uit.push(Object.assign({ link: l.link, naam: d.naam || l.naam || 'Bandlid' }, x)); });
+  });
+  return uit.sort(function(a, b){ return (b.gedeeld || b.created || 0) - (a.gedeeld || a.created || 0); });
+}
+function bandNieuw(){ var g = meta.bandGezien || {}; return bandItems().filter(function(x){ return !g[x.id]; }).length; }
+function toonBandBadge(){ $('kMenu').classList.toggle('badge-dot', ROL === 'vol' && bandNieuw() > 0); }
+function renderVanDeBand(){
+  $('fragZoek').parentNode.classList.add('verborgen');
+  $('fragFilters').classList.add('verborgen');
+  var lijst = $('fragLijst'); lijst.innerHTML = '';
+  var items = bandItems(), gezien = meta.bandGezien || {};
+  if (!items.length) lijst.appendChild(el('div', { klasse: 'leeg', tekst: 'Nog niets gedeeld door je band.' }));
+  items.forEach(function(x){
+    var speler = el('div');
+    lijst.appendChild(el('div', { klasse: 'frag' + (gezien[x.id] ? '' : ' nieuw') }, [
+      el('div', { klasse: 'zacht klein', tekst: (gezien[x.id] ? '' : '● nieuw · ') + x.naam + ' · ' + (x.songTitel || 'los idee') + ' · ' + wanneer(x.gedeeld || x.created) }),
+      x.notitie ? el('div', { klasse: 'tx', tekst: x.notitie }) : null,
+      el('div', { klasse: 'ac' }, [
+        el('button', { tekst: '▶ ' + duurTekst(x.duur), onclick: function(){
+          speler.innerHTML = '<p class="zacht klein">Laden…</p>';
+          deelBestand(x.link, '/' + x.bestand, true).then(function(b){ speler.innerHTML = ''; var a = el('audio', { controls: 'controls', src: URL.createObjectURL(b) }); speler.appendChild(a); a.play(); },
+            function(e){ speler.innerHTML = ''; speler.appendChild(el('p', { klasse: 'zacht klein', tekst: 'Afspelen lukt niet: ' + scopeFout(e) })); });
+        } }),
+        el('button', { tekst: 'Bij mijn fragmenten', title: 'Kopie bij je eigen fragmenten (de Studio zet ze om naar woorden en muziek)', onclick: function(){
+          deelBestand(x.link, '/' + x.bestand, true).then(function(b){ return bewaarMemo(b, b.type || 'audio/mp4', x.duur || 0, null, x.bestand); })
+            .then(function(f){ if (!f) return; f.text = 'Van ' + x.naam + (x.songTitel ? ' · ' + x.songTitel : '') + (x.notitie ? '\n' + x.notitie : '');
+              f.tags.type = ['van ' + x.naam.toLowerCase()]; f.updated = stempel(f.updated); gewijzigd(); toast('Bij je fragmenten gezet'); })
+            .catch(function(e){ toast('Lukt niet: ' + scopeFout(e)); });
+        } })]),
+      speler]));
+  });
+  // alles wat je nu ziet, telt als gezien
+  meta.bandGezien = meta.bandGezien || {}; items.forEach(function(x){ meta.bandGezien[x.id] = 1; }); bewaarMeta();
+  setTimeout(toonBandBadge, 300);
+}
+[].forEach.call(document.querySelectorAll('#fragTabs .tab'), function(b){
+  b.addEventListener('click', function(){ fragTab = b.getAttribute('data-tab'); renderFrag(); });
+});
+function toonBand(){
+  var gedeeld = db.albums.filter(function(a){ return a.band; }), info = el('p', { klasse: 'zacht klein' });
+  openVel('Band', [
+    el('p', { tekst: 'Deel een album met je band: ze zien tekst, akkoorden en maten, en kunnen luisteren en meespelen met de mix die je in de Studio kiest (♪ Voor de band). Wijzigen kunnen ze niets; eigen notities en opnames wel.' }),
+    el('div', { klasse: 'melding' }, [gedeeld.length ? 'Gedeeld: ' + gedeeld.map(function(a){ return a.name; }).join(', ') : 'Nog geen album gedeeld: kies in je bibliotheek bij een album ⋯ › Delen met de band.']),
+    el('div', { klasse: 'knoppen' }, [el('button', { klasse: 'primair', tekst: 'Bandlid uitnodigen', onclick: function(){
+      if (!verbonden()) { info.textContent = 'Verbind eerst met Dropbox.'; return; }
+      info.textContent = 'Uitnodiging maken…';
+      publiceerBand().then(function(){ return maakDeelLink('/Band'); }).then(function(link){
+        var url = basisUrl() + '?band#uitnodiging=' + encodeURIComponent(link);
+        info.textContent = 'Klaar. Stuur deze link naar je bandlid; die opent er de Songtool mee in bandmodus.';
+        deel('Songtool – band', 'Open dit op je iPhone of laptop (en zet het op je beginscherm):', url);
+      }).catch(function(e){ info.textContent = scopeFout(e); });
+    } })]),
+    info,
+    (db.bandleden || []).length ? el('h3', { tekst: 'Bandleden die met jou delen' }) : null,
+    (db.bandleden || []).length ? el('div', null, db.bandleden.map(function(l){
+      return el('div', { klasse: 'rij', style: 'display:flex;align-items:center;gap:8px;margin:6px 0' }, [el('span', { tekst: l.naam || 'Bandlid', style: 'flex:1' }),
+        el('button', { klasse: 'plat gevaar', tekst: 'Verwijderen', onclick: function(){ if (confirm('Wat ' + (l.naam || 'dit bandlid') + ' deelt niet meer tonen?')) { l.weg = true; l.updated = Date.now(); db.bandleden = db.bandleden.filter(function(x){ return x !== l; }); gewijzigd(); sluitVel(); } } })]);
+    })) : el('p', { klasse: 'zacht klein', tekst: 'Wat je bandlid met jou deelt (opnames, ideeën), verschijnt in Fragmenten › Van de band, met een melding. Daarvoor stuurt je bandlid jou één keer een link vanuit zijn Songtool.' })]);
+}
+// link van een bandlid openen (…#bandlid=…&naam=…): toevoegen aan je band
+function ontvangBandlid(){
+  var m = location.hash.match(/bandlid=([^&]+)(?:&naam=([^&]*))?/);
+  if (!m) return;
+  var link = decodeURIComponent(m[1]), naam = m[2] ? decodeURIComponent(m[2]) : 'Bandlid';
+  db.bandleden = db.bandleden || [];
+  if (!db.bandleden.some(function(l){ return l.link === link; })) { db.bandleden.push({ link: link, naam: naam, toegevoegd: Date.now(), updated: Date.now() }); gewijzigd(); }
+  history.replaceState(null, '', location.pathname);
+  toast(naam + ' deelt nu met jou: zie Fragmenten › Van de band');
+}
+
+// ---------- bandmodus (het bandlid, bv. Robbe) ----------
+var bdb, bmeta, bstof, bHuidig = null, bWeergave = 'blad', bSyncBezig = false, bRunsModus = false;
+var BDB_KEY = 'songtool_band_v1', BMETA_KEY = 'songtool_bandmeta_v1', BSTOF_KEY = 'songtool_bandstof_v1';
+function bWijzig(){ bmeta.dirty = true; bmeta.seq = (bmeta.seq || 0) + 1; lsSet(BDB_KEY, bdb); lsSet(BMETA_KEY, bmeta); clearTimeout(wijzigTimer); wijzigTimer = setTimeout(bandSync, 1000); }
+function bSongs(){ return (bstof.band && bstof.band.songs) || {}; }
+function bOpn(id){ return ((bstof.opnames && bstof.opnames.songs) || {})[id] || null; }
+function bEerste(){ var al = (bstof.band && bstof.band.albums) || []; for (var i = 0; i < al.length; i++) if (al[i].songIds.length) return al[i].songIds[0]; return null; }
+function vervang(id){ var o = $(id), n = o.cloneNode(true); o.parentNode.replaceChild(n, o); return n; }
+
+function bandStart(){
+  document.body.classList.add('bandmodus');
+  bdb = lsGet(BDB_KEY, { notities: {}, memos: [], deleted: {}, naam: '', link: '' });
+  bdb.runs = bdb.runs || {};
+  bmeta = lsGet(BMETA_KEY, {}); bstof = lsGet(BSTOF_KEY, {});
+  var m = location.hash.match(/uitnodiging=([^&]+)/);
+  if (m) { bdb.link = decodeURIComponent(m[1]); bdb.linkTijd = Date.now(); bWijzig(); history.replaceState(null, '', location.pathname + '?band'); }
+  memoBestemming = bandMemoBewaar;
+  vervang('kLib').addEventListener('click', function(){ openLade('lib'); renderBandLib(); });
+  vervang('kTitel').addEventListener('click', function(){ openLade('lib'); renderBandLib(); });
+  vervang('kModus').addEventListener('click', function(){ bWeergave = bWeergave === 'blad' ? 'maten' : 'blad'; bToon(); });
+  vervang('kMenu').addEventListener('click', bandMenu);
+  vervang('zoek').addEventListener('input', renderBandLib);
+  ['kOrden'].forEach(function(id){ $(id).classList.add('verborgen'); });
+  document.querySelector('#lib .lade-voet').classList.add('verborgen');
+  var sp = el('div', { klasse: 'bspeler verborgen', id: 'bspeler' }); $('app').appendChild(sp);
+  bOpen(bstof.band && bSongs()[ui.bandLaatste] ? ui.bandLaatste : bEerste());
+  bandSync();
+}
+function renderBandLib(){
+  var lijst = $('libLijst'); lijst.innerHTML = '';
+  var q = norm($('zoek').value), al = (bstof.band && bstof.band.albums) || [];
+  if (!al.length) { lijst.appendChild(el('div', { klasse: 'leeg', tekst: bdb.link ? 'Nog niets ontvangen. Even geduld, of verbind met Dropbox (⋯ › Synchronisatie).' : 'Open eerst de uitnodigingslink van Tom.' })); return; }
+  al.forEach(function(a){
+    var blok = el('div', { klasse: 'album' }, [el('div', { klasse: 'album-kop' }, [el('span', { klasse: 'n', tekst: a.name })])]);
+    a.songIds.forEach(function(id){
+      var s = bSongs()[id]; if (!s || (q && norm(s.title).indexOf(q) < 0)) return;
+      var o = bOpn(id), heeft = o && o.audio && o.audio.master;
+      blok.appendChild(el('div', { klasse: 'nummer' + (id === bHuidig ? ' actief' : '') }, [el('div', { klasse: 'tt', onclick: function(){ bOpen(id); sluitLades(); } }, [
+        el('span', null, [s.title, heeft ? el('span', { klasse: 'studio-teken', tekst: '♫' }) : null, bdb.notities[id] && bdb.notities[id].tekst ? el('span', { klasse: 'studio-teken', tekst: '✎' }) : null]),
+        el('span', { klasse: 'mm', tekst: [s.key, s.bpm ? s.bpm + ' BPM' : ''].filter(Boolean).join(' · ') })])]));
+    });
+    lijst.appendChild(blok);
+  });
+}
+function bOpen(id){
+  bHuidig = id; ui.bandLaatste = id; lsSet(UI_KEY, ui); ui.transpose = 0; bRunsModus = false;
+  bSpelerStop(); bToon();
+}
+function bToon(){
+  var s = bHuidig ? bSongs()[bHuidig] : null, o = bHuidig ? bOpn(bHuidig) : null;
+  editor.classList.add('verborgen'); weergave.classList.remove('verborgen');
+  $('kModus').textContent = bWeergave === 'blad' ? 'Maten' : 'Blad';
+  $('kModus').classList.toggle('verborgen', !s || !o || !(o.maten || []).length);
+  if (!s) {
+    $('tTitel').textContent = 'Songtool · band'; $('tMeta').textContent = 'tik ☰ voor de nummers';
+    balk.classList.add('verborgen'); weergave.innerHTML = '';
+    weergave.appendChild(el('div', { klasse: 'leeg' }, [
+      el('p', { tekst: !bdb.link ? 'Welkom! Open de uitnodigingslink die Tom je stuurde.' : (!verbonden() ? 'Welkom! Verbind met je eigen Dropbox: daar komen je notities en opnames, en zo krijg je de nummers van Tom.' : 'De nummers worden opgehaald…') }),
+      !verbonden() ? el('button', { klasse: 'primair', tekst: '☁ Verbinden met Dropbox', onclick: toonSync }) : null]));
+    $('bspeler').classList.add('verborgen');
+    return;
+  }
+  $('tTitel').textContent = s.title;
+  $('tMeta').textContent = [s.key, s.bpm || (o && o.tempo ? Math.round(o.tempo) : '') ? (s.bpm || Math.round(o.tempo)) + ' BPM' : '', o && o.maatsoort, o && o.maten && o.maten.length ? o.maten.length + ' maten' : ''].filter(Boolean).join(' · ');
+  // werkbalk
+  balk.innerHTML = ''; balk.classList.remove('verborgen');
+  var tr = ui.transpose || 0;
+  function zetTr(d){ ui.transpose = tr + d; bToon(); }
+  if (bWeergave === 'blad') {
+    balk.appendChild(el('button', { klasse: 'chip sectie', tekst: '−', onclick: function(){ zetTr(-1); } }));
+    balk.appendChild(el('span', { klasse: 'toon' + (tr ? ' acc' : ''), tekst: s.key ? transponeer(s.key, tr) : (tr ? (tr > 0 ? '+' : '') + tr : 'Toon') }));
+    balk.appendChild(el('button', { klasse: 'chip sectie', tekst: '+', onclick: function(){ zetTr(1); } }));
+    balk.appendChild(el('button', { klasse: 'chip sectie' + (ui.passend ? ' aan' : ''), tekst: '⤢ Passend', onclick: function(){ ui.passend = !ui.passend; lsSet(UI_KEY, ui); bToon(); } }));
+  }
+  var n = bdb.notities[bHuidig];
+  balk.appendChild(el('button', { klasse: 'chip sectie' + (bRunsModus ? ' aan' : ''), tekst: '✎ Runs', title: 'Tik op een regel of maat om er een run of aanwijzing bij te zetten', onclick: function(){
+    bRunsModus = !bRunsModus; bToon(); if (bRunsModus) toast('Tik op een regel' + (bWeergave === 'maten' ? ' of maat' : '') + ' om er een run bij te noteren'); } }));
+  balk.appendChild(el('button', { klasse: 'chip sectie' + (n && (n.tekst || n.sound) ? ' acc' : ''), tekst: '🎛 Sound & notitie', onclick: bNotitie }));
+  balk.appendChild(el('button', { klasse: 'chip sectie', tekst: '🎙 Opnemen', onclick: function(){ opnemen(null); } }));
+  // inhoud
+  weergave.classList.toggle('passend', bWeergave === 'blad' && !!ui.passend);
+  weergave.style.overflow = '';
+  var notitie = (n && n.sound ? '<div class="mijn-sound" onclick="bNotitie()"><b>🎛 Sound</b> ' + esc(n.sound) + '</div>' : '') +
+                (n && n.tekst ? '<div class="mijn-notitie" onclick="bNotitie()">' + esc(n.tekst) + '</div>' : '');
+  if (bWeergave === 'maten' && o) {
+    weergave.style.setProperty('--schaal', 1);
+    weergave.innerHTML = notitie + matenHtml(o);
+    [].forEach.call(weergave.querySelectorAll('.maat'), function(c){ c.addEventListener('click', function(){
+      var m = +c.getAttribute('data-maat');
+      if (bRunsModus) bRunVel('maat', String(m), 'Maat ' + m + ' (' + c.textContent.replace(/^\d+/, '').trim() + ')'); else bSpring(m); }); });
+  } else {
+    weergave.style.setProperty('--schaal', ui.passend ? 1 : schaal());
+    weergave.innerHTML = notitie + bladHtml(s, tr);
+    bRunsInBlad(s);
+    if (ui.passend) pasIn();
+  }
+  bSpelerToon(o);
+}
+function matenHtml(o){
+  var html = '<div class="maten">', secs = o.secties && o.secties.length ? o.secties : [{ naam: '', start: 1, eind: o.maten.length }];
+  secs.forEach(function(x){
+    html += '<div class="maat-sectie"><div class="sectie-kop">' + esc(x.naam) + ' <span class="zacht">· maat ' + x.start + '–' + x.eind + ' (' + (x.eind - x.start + 1) + ')</span></div><div class="maat-rij">';
+    for (var i = x.start; i <= x.eind; i++) {
+      var m = o.maten[i - 1] || { akkoorden: [] };
+      var run = ((bdb.runs[bHuidig] || {})['maat:' + i] || {}).tekst;
+      html += '<div class="maat' + (run ? ' met-run' : '') + '" data-maat="' + i + '"><span class="nr">' + i + '</span>' + esc(m.akkoorden.map(function(a){ return transponeer(a, ui.transpose || 0); }).join(' ') || '·') +
+        (run ? '<span class="run-maat">' + esc(run) + '</span>' : '') + '</div>';
+    }
+    html += '</div></div>';
+  });
+  return html + '</div>';
+}
+function bNotitie(){
+  var n = bdb.notities[bHuidig] || {};
+  var snd = el('textarea', { rows: '3', placeholder: 'Bv. "P-bass, flatwounds · ampeg: gain 3, bass 6 · octaver in de brug, chorus uit"' }); snd.value = n.sound || '';
+  var t = el('textarea', { rows: '6', placeholder: 'Bv. "intro 2x", "outro samen stoppen op de 1"…' }); t.value = n.tekst || '';
+  openVel((bSongs()[bHuidig] || {}).title || 'Notitie', [
+    el('label', { klasse: 'veld' }, [el('span', { tekst: '🎛 Sound & effecten (versterker, pedalen, instellingen)' }), snd]),
+    el('label', { klasse: 'veld' }, [el('span', { tekst: '✎ Notitie' }), t]),
+    el('p', { klasse: 'zacht klein', tekst: 'Enkel voor jou, live op al je toestellen. Runs bij een regel of maat: knop "✎ Runs".' }),
+    el('div', { klasse: 'knoppen' }, [el('button', { klasse: 'primair', tekst: 'Bewaren', onclick: function(){
+      bdb.notities[bHuidig] = { tekst: t.value.trim(), sound: snd.value.trim(), updated: Date.now() }; bWijzig(); sluitVel(); bToon(); } })])]);
+}
+// runs: aanwijzingen van het bandlid bij een regel van de tekst of bij een maat (Toms tekst blijft onaangeroerd).
+// Een regel wordt herkend aan zijn tekst (+ de hoeveelste keer die regel voorkomt), zodat de notitie blijft staan
+// als Tom elders in het nummer iets wijzigt.
+function bRegelSleutels(s){
+  var tel = {}, uit = [];
+  (s.lyrics || '').replace(/\r\n/g, '\n').split('\n').forEach(function(raw){
+    var t = raw.trim();
+    if (!t || /^\{([^:}]+)\}$/.test(t) || /^\{c:/i.test(t)) return;
+    var k = norm(raw.replace(/\[[^\]]*\]/g, '')) || ('akk' + norm(raw));
+    tel[k] = (tel[k] || 0) + 1;
+    uit.push({ sleutel: 'regel:' + k + '#' + tel[k], tekst: raw.replace(/\[[^\]]*\]/g, '').trim() || raw.trim() });
+  });
+  return uit;
+}
+function bRunsInBlad(s){
+  var regels = bRegelSleutels(s), els = weergave.querySelectorAll('.blad .lijn, .blad .akkoordlijn'), runs = bdb.runs[bHuidig] || {};
+  [].forEach.call(els, function(e, i){
+    var r = regels[i]; if (!r) return;
+    var run = (runs[r.sleutel] || {}).tekst;
+    if (run) e.insertAdjacentHTML('afterend', '<div class="run">↳ ' + esc(run) + '</div>');
+    if (bRunsModus) { e.classList.add('tikbaar'); e.addEventListener('click', function(){ bRunVel(r.sleutel, null, r.tekst); }); }
+  });
+}
+function bRunVel(sleutel, maat, label){
+  var key = maat ? 'maat:' + maat : sleutel, runs = bdb.runs[bHuidig] = bdb.runs[bHuidig] || {}, oud = runs[key] || {};
+  var t = el('textarea', { rows: '3', placeholder: 'Bv. "run E–F#–G# naar A", "slide naar de 12e", "rust op tel 4"' }); t.value = oud.tekst || '';
+  openVel('Run · ' + label, [t, el('div', { klasse: 'knoppen' }, [
+    el('button', { klasse: 'primair', tekst: 'Bewaren', onclick: function(){ runs[key] = { tekst: t.value.trim(), updated: Date.now() }; bWijzig(); sluitVel(); bToon(); } }),
+    oud.tekst ? el('button', { klasse: 'gevaar', tekst: 'Wissen', onclick: function(){ runs[key] = { tekst: '', updated: Date.now() }; bWijzig(); sluitVel(); bToon(); } }) : null])]);
+  setTimeout(function(){ t.focus(); }, 250);
+}
+
+// meespelen: master / zonder bas / bas alleen, naar een sectie of maat springen, herhalen, trager
+var bAudio = null, bBron = 'zonder_bas', bLus = null, bSnel = 1, bRaf = null;
+var BRONNAAM = { master: 'Master', zonder_bas: 'Zonder bas', bas: 'Bas alleen' };
+function bMaatS(o){ return (parseInt(String(o.maatsoort || '4/4'), 10) || 4) * 60 / (o.tempo || 100); }
+function bTijdVanMaat(o, m){ return (o.maat1_op || 0) + (m - 1) * bMaatS(o); }
+function bMaatVanTijd(o, t){ return Math.floor((t - (o.maat1_op || 0)) / bMaatS(o)) + 1; }
+function bSpelerStop(){ if (bAudio) { bAudio.pause(); bAudio = null; } bLus = null; cancelAnimationFrame(bRaf); }
+function bSpelerToon(o){
+  var sp = $('bspeler'); sp.innerHTML = '';
+  if (!o || !o.audio || !o.audio.master) { sp.classList.add('verborgen'); return; }
+  sp.classList.remove('verborgen');
+  var bronnen = Object.keys(BRONNAAM).filter(function(k){ return o.audio[k]; });
+  if (bronnen.indexOf(bBron) < 0) bBron = bronnen.indexOf('zonder_bas') >= 0 ? 'zonder_bas' : 'master';
+  var speel = el('button', { klasse: 'speel', tekst: bAudio && !bAudio.paused ? '❚❚' : '▶', onclick: function(){ bSpeel(o); } });
+  var tijd = el('span', { klasse: 'btijd', id: 'btijd', tekst: bAudio ? bTijdTekst(o) : (o.mix ? 'mix: ' + o.mix : '') });
+  sp.appendChild(el('div', { klasse: 'brij' }, [speel,
+    el('div', { klasse: 'bronnen' }, bronnen.map(function(k){ return el('button', { klasse: 'chip sectie' + (k === bBron ? ' aan' : ''), tekst: BRONNAAM[k], onclick: function(){ bWissel(o, k); } }); })), tijd]));
+  sp.appendChild(el('div', { klasse: 'brij secties' }, [
+    el('button', { klasse: 'chip sectie' + (bLus ? ' aan' : ''), tekst: '🔁', title: 'Herhaal de sectie waar je nu bent', onclick: function(){ bHerhaal(o); } }),
+    el('button', { klasse: 'chip sectie' + (bSnel < 1 ? ' aan' : ''), tekst: Math.round(bSnel * 100) + '%', title: 'Trager meespelen (zelfde toonhoogte)', onclick: function(){ bSnel = bSnel === 1 ? 0.85 : (bSnel === 0.85 ? 0.75 : 1); if (bAudio) bAudio.playbackRate = bSnel; bSpelerToon(o); } }),
+    el('span', { klasse: 'zacht klein', style: 'flex:none', tekst: '|' })].concat((o.secties || []).map(function(x){
+    return el('button', { klasse: 'chip sectie' + (bLus && bLus.start === x.start ? ' aan' : ''), tekst: x.naam, onclick: function(){ bSpring(x.start); } });
+  }))));
+}
+function bTijdTekst(o){
+  var t = bAudio ? bAudio.currentTime : 0, m = bMaatVanTijd(o, t);
+  return duurTekst(t) + (m >= 1 ? ' · maat ' + m : ' · intel');
+}
+function bLaad(o, bron){
+  var pad = '/' + o.audio[bron], sleutel = pad + '@' + (o.gemaakt || '');
+  return idbDoe('readonly', function(st){ return st.get(sleutel); }, 'audio').catch(function(){ return null; }).then(function(b){
+    if (b) return b;
+    $('btijd').textContent = 'Laden… (de eerste keer, daarna ook offline)';
+    return deelBestand(bdb.link, pad, true).then(function(blob){
+      idbDoe('readwrite', function(st){ return st.put(blob, sleutel); }, 'audio').catch(function(){});
+      return blob;
+    });
+  });
+}
+function bWissel(o, bron){
+  var t = bAudio ? bAudio.currentTime : null, speelde = bAudio && !bAudio.paused;
+  bBron = bron;
+  if (!bAudio) { bSpelerToon(o); return; }
+  bAudio.pause();
+  bLaad(o, bron).then(function(blob){
+    var a = new Audio(URL.createObjectURL(blob)); bZetAudio(a, o);
+    a.addEventListener('loadedmetadata', function(){ a.currentTime = t || 0; if (speelde) a.play(); }, { once: true });
+    bSpelerToon(o);
+  }).catch(function(e){ toast('Laden lukt niet: ' + scopeFout(e)); });
+}
+function bZetAudio(a, o){
+  bAudio = a; a.playbackRate = bSnel; a.preservesPitch = true; a.webkitPreservesPitch = true;
+  a.addEventListener('play', function(){ bLoop(o); bKnop(); });
+  a.addEventListener('pause', bKnop); a.addEventListener('ended', bKnop);
+  // herhalen ook als het scherm niet ververst (vergrendeld, achtergrond): de audio zelf meldt de tijd
+  a.addEventListener('timeupdate', function(){ if (bLus && a.currentTime >= bLus.b) a.currentTime = bLus.a; });
+}
+function bKnop(){ var k = document.querySelector('#bspeler .speel'); if (k) k.textContent = bAudio && !bAudio.paused ? '❚❚' : '▶'; }
+function bSpeel(o, vanaf){
+  if (bAudio) { if (vanaf != null) bAudio.currentTime = vanaf; if (bAudio.paused || vanaf != null) bAudio.play(); else bAudio.pause(); return; }
+  bLaad(o, bBron).then(function(blob){
+    var a = new Audio(URL.createObjectURL(blob)); bZetAudio(a, o);
+    a.addEventListener('loadedmetadata', function(){ if (vanaf != null) a.currentTime = vanaf; a.play(); }, { once: true });
+  }).catch(function(e){ toast('Laden lukt niet: ' + scopeFout(e)); });
+}
+function bSpring(maat){ var o = bOpn(bHuidig); if (!o) return; if (bLus) bLus = null; bSpeel(o, Math.max(0, bTijdVanMaat(o, maat) - 0.05)); bSpelerToon(o); }
+function bHerhaal(o){
+  if (bLus) { bLus = null; bSpelerToon(o); return; }
+  var m = bAudio ? bMaatVanTijd(o, bAudio.currentTime) : 1;
+  var x = (o.secties || []).filter(function(y){ return y.start <= m && m <= y.eind; })[0] || (o.secties || [])[0];
+  if (!x) return;
+  bLus = { start: x.start, eind: x.eind, a: bTijdVanMaat(o, x.start), b: bTijdVanMaat(o, x.eind + 1) };
+  if (!bAudio || bAudio.currentTime < bLus.a || bAudio.currentTime > bLus.b) bSpeel(o, bLus.a);
+  bSpelerToon(o); toast('Herhaal ' + x.naam + ' (maat ' + x.start + '–' + x.eind + ')');
+}
+function bLoop(o){
+  cancelAnimationFrame(bRaf);
+  var vorige = 0;
+  (function stap(){
+    if (!bAudio || bAudio.paused) return;
+    var t = bAudio.currentTime;
+    if (bLus && t >= bLus.b) bAudio.currentTime = bLus.a;
+    var tt = $('btijd'); if (tt) tt.textContent = bTijdTekst(o);
+    var m = bMaatVanTijd(o, t);
+    if (m !== vorige && bWeergave === 'maten') {
+      var oud = weergave.querySelector('.maat.nu'); if (oud) oud.classList.remove('nu');
+      var c = weergave.querySelector('.maat[data-maat="' + m + '"]');
+      if (c) { c.classList.add('nu'); var r = c.getBoundingClientRect(), w = weergave.getBoundingClientRect(); if (r.top < w.top || r.bottom > w.bottom) c.scrollIntoView({ block: 'center', behavior: 'smooth' }); }
+      vorige = m;
+    }
+    bRaf = requestAnimationFrame(stap);
+  })();
+}
+
+// opnames van het bandlid (eigen map; delen met Tom via Gedeeld/)
+function bandMemoBewaar(blob, mime, duur){
+  var id = genId('memo'), ext = extVoor(mime), pad = '/memos/' + id + '.' + ext, s = bSongs()[bHuidig];
+  return memoBewaar(id, { blob: blob, type: mime, geupload: false, pad: pad }).then(function(){
+    bdb.memos.unshift({ id: id, created: Date.now(), updated: Date.now(), duur: Math.round(duur * 10) / 10, pad: pad, ext: ext, type: mime,
+                        songId: bHuidig, songTitel: s ? s.title : '', gedeeld: false, notitie: '' });
+    bWijzig(); toast('Opname bewaard'); mijnOpnames();
+  });
+}
+function mijnOpnames(){
+  var lijst = bdb.memos.filter(function(x){ return !bdb.deleted[x.id]; });
+  openVel('Mijn opnames', [
+    el('div', { klasse: 'knoppen', style: 'margin:0 0 10px' }, [el('button', { klasse: 'primair', tekst: '🎙 Nieuwe opname', onclick: function(){ sluitVel(); opnemen(null); } })]),
+    lijst.length ? null : el('p', { klasse: 'zacht', tekst: 'Nog geen opnames.' })].concat(lijst.map(function(x){
+    var speler = el('div');
+    return el('div', { klasse: 'frag' }, [
+      el('div', { klasse: 'zacht klein', tekst: (x.songTitel || 'Los idee') + ' · ' + wanneer(x.created) + ' · ' + duurTekst(x.duur) + (x.gedeeld ? ' · gedeeld met Tom' : '') }),
+      x.notitie ? el('div', { klasse: 'tx', tekst: x.notitie }) : null,
+      el('div', { klasse: 'ac' }, [
+        el('button', { tekst: '▶', onclick: function(){ speelMemo({ id: x.id, memo: { pad: x.pad } }, speler); } }),
+        el('button', { klasse: x.gedeeld ? 'aan-gedeeld' : '', tekst: x.gedeeld ? '✓ Gedeeld met Tom' : 'Deel met Tom', onclick: function(){
+          if (!x.gedeeld && !bdb.naam) { var n = prompt('Je naam (zo ziet Tom van wie het komt):', ''); if (!n || !n.trim()) return; bdb.naam = n.trim(); }
+          x.gedeeld = !x.gedeeld; x.updated = Date.now(); bWijzig(); mijnOpnames();
+          if (x.gedeeld && !bdb.tomWeet) toast('Gedeeld. Stuur Tom één keer je deel-link: ⋯ › Delen met Tom');
+        } }),
+        el('button', { tekst: '✎', onclick: function(){ var t = prompt('Notitie bij deze opname:', x.notitie || ''); if (t !== null) { x.notitie = t.trim(); x.updated = Date.now(); bWijzig(); mijnOpnames(); } } }),
+        el('button', { klasse: 'gevaar', tekst: '🗑', onclick: function(){ if (confirm('Deze opname uit je lijst halen?')) { bdb.deleted[x.id] = Date.now(); x.gedeeld = false; x.updated = Date.now(); bWijzig(); mijnOpnames(); } } })]),
+      speler]);
+  })));
+}
+function bandMenu(){
+  openVel('Menu', [
+    menuItem('🎙', 'Mijn opnames', bdb.memos.length ? bdb.memos.length + ' opname(s)' : 'Neem een idee op', mijnOpnames),
+    menuItem('↗', 'Delen met Tom', 'Stuur Tom één keer deze link: dan ziet hij wat jij deelt', function(){
+      if (!verbonden()) { toonSync(); return; }
+      if (!bdb.naam) { var n = prompt('Je naam (zo ziet Tom van wie het komt):', ''); if (!n || !n.trim()) return; bdb.naam = n.trim(); bWijzig(); }
+      schrijfGedeeld(true).then(function(){ return maakDeelLink('/Gedeeld'); }).then(function(link){
+        bdb.tomWeet = true; bWijzig();
+        deel('Songtool – ' + bdb.naam, 'Open dit in je Songtool om te zien wat ik deel:', basisUrl() + '#bandlid=' + encodeURIComponent(link) + '&naam=' + encodeURIComponent(bdb.naam));
+      }).catch(function(e){ alert(scopeFout(e)); });
+    }),
+    menuItem('🖨', 'Afdrukken / PDF', 'Dit nummer', function(){ var s = bSongs()[bHuidig]; if (s) drukAf([s]); }),
+    menuItem('☁', 'Synchronisatie', syncUitleg(), toonSync),
+    menuItem('?', 'Hulp', null, function(){ openVel('Hulp', [el('div', { klasse: 'help', html:
+      '<p><b>Blad</b>: tekst en akkoorden van Tom (je kan niets wijzigen; transponeren en "Passend" gelden enkel voor jou).</p>' +
+      '<p><b>Maten</b>: de akkoorden per maat, per sectie. Tik op een maat om daar te beginnen spelen.</p>' +
+      '<p><b>Meespelen</b>: kies "Zonder bas" om mee te spelen of "Bas alleen" om te leren; tik op een sectie om ernaartoe te springen, 🔁 herhaalt de sectie, 85% / 75% is trager zonder dat de toonhoogte verandert. Wat je één keer beluisterde, werkt daarna ook offline.</p>' +
+      '<p><b>🎛 Sound & notitie</b>: per nummer je sound (versterker, pedalen, instellingen) en een notitie; ze staan bovenaan het nummer.</p>' +
+      '<p><b>✎ Runs</b>: zet de knop aan en tik op een regel (Blad) of een maat (Maten) om er een run of aanwijzing bij te noteren.</p>' +
+      '<p>Notities, runs en <b>opnames</b> zijn van jou, op al je toestellen. Een opname deel je met Tom met "Deel met Tom".</p>' })]); })]);
+}
+function schrijfGedeeld(altijd){
+  var items = bdb.memos.filter(function(x){ return x.gedeeld && !bdb.deleted[x.id]; });
+  var inh = { app: 'Songtool', naam: bdb.naam || 'Bandlid', items: items.map(function(x){
+    return { id: x.id, songId: x.songId, songTitel: x.songTitel, created: x.created, gedeeld: x.updated, duur: x.duur, notitie: x.notitie, bestand: x.id + '.' + x.ext };
+  }) };
+  var h = hash(JSON.stringify(inh));
+  bmeta.gekopieerd = bmeta.gekopieerd || {};
+  var keten = Promise.resolve();
+  items.forEach(function(x){
+    if (bmeta.gekopieerd[x.id]) return;
+    keten = keten.then(function(){ return rpc('files/copy_v2', { from_path: x.pad, to_path: '/Gedeeld/' + x.id + '.' + x.ext, autorename: false }); })
+      .then(function(){ bmeta.gekopieerd[x.id] = 1; }, function(e){ if (e.status === 409 && /to\/conflict/.test(e.message)) bmeta.gekopieerd[x.id] = 1; else throw e; });
+  });
+  Object.keys(bmeta.gekopieerd).forEach(function(id){
+    if (items.some(function(x){ return x.id === id; })) return;
+    var x = bdb.memos.filter(function(y){ return y.id === id; })[0];
+    keten = keten.then(function(){ return rpc('files/delete_v2', { path: '/Gedeeld/' + id + '.' + (x ? x.ext : 'm4a') }).catch(function(){}); })
+      .then(function(){ delete bmeta.gekopieerd[id]; });
+  });
+  return keten.then(function(){
+    if (!altijd && h === bmeta.gedeeldHash) return;
+    return zetBestand('/Gedeeld/gedeeld.json', JSON.stringify(inh), { '.tag': 'overwrite' }).then(function(){ bmeta.gedeeldHash = h; lsSet(BMETA_KEY, bmeta); });
+  });
+}
+function bVoegSamen(a, b){
+  var uit = { notities: {}, memos: [], deleted: {}, naam: a.naam || b.naam, link: (a.linkTijd || 0) >= (b.linkTijd || 0) ? (a.link || b.link) : (b.link || a.link),
+              linkTijd: Math.max(a.linkTijd || 0, b.linkTijd || 0), tomWeet: a.tomWeet || b.tomWeet };
+  Object.keys(a.notities || {}).concat(Object.keys(b.notities || {})).forEach(function(k){
+    var x = (a.notities || {})[k], y = (b.notities || {})[k];
+    uit.notities[k] = !x ? y : (!y ? x : ((x.updated || 0) >= (y.updated || 0) ? x : y));
+  });
+  Object.keys(a.deleted || {}).concat(Object.keys(b.deleted || {})).forEach(function(k){ uit.deleted[k] = Math.max((a.deleted || {})[k] || 0, (b.deleted || {})[k] || 0); });
+  uit.runs = {};
+  Object.keys(a.runs || {}).concat(Object.keys(b.runs || {})).forEach(function(song){
+    var x = (a.runs || {})[song] || {}, y = (b.runs || {})[song] || {}, r = uit.runs[song] = {};
+    Object.keys(x).concat(Object.keys(y)).forEach(function(k){ r[k] = !x[k] ? y[k] : (!y[k] ? x[k] : ((x[k].updated || 0) >= (y[k].updated || 0) ? x[k] : y[k])); });
+  });
+  var mm = {};
+  (a.memos || []).concat(b.memos || []).forEach(function(x){ if (!mm[x.id] || (x.updated || 0) > (mm[x.id].updated || 0)) mm[x.id] = x; });
+  uit.memos = Object.keys(mm).map(function(k){ return mm[k]; }).sort(function(x, y){ return y.created - x.created; });
+  return uit;
+}
+function bandSync(){
+  if (!verbonden() || !navigator.onLine) { zetDot(verbonden() ? 'bezig' : '', verbonden() ? 'Offline' : null); return Promise.resolve(); }
+  if (bSyncBezig) return Promise.resolve();
+  bSyncBezig = true; zetDot('bezig', 'Synchroniseren…');
+  var poging = 0;
+  function eigen(){
+    poging++;
+    return rpc('files/list_folder', { path: '' }).then(function(lijst){
+      var f = zoekIn(lijst, 'bandlid.json');
+      var stap = Promise.resolve();
+      if (f && f.rev !== bmeta.rev) stap = haalBestand('/bandlid.json').then(function(x){
+        var ver = JSON.parse(x), samen = bVoegSamen(bdb, ver), was = JSON.stringify(bdb);
+        if (JSON.stringify(samen) !== was) { bdb = samen; lsSet(BDB_KEY, bdb); bToon(); }
+        bmeta.rev = f.rev;
+        if (JSON.stringify(samen) !== JSON.stringify(bVoegSamen(ver, ver))) { bmeta.dirty = true; bmeta.seq = (bmeta.seq || 0) + 1; }
+      });
+      return stap.then(function(){
+        if (f && !bmeta.dirty) return;
+        var seq = bmeta.seq;
+        return zetBestand('/bandlid.json', JSON.stringify(bdb), f ? { '.tag': 'update', update: f.rev } : { '.tag': 'add' }).then(function(r){
+          bmeta.rev = r.rev; if (bmeta.seq === seq) bmeta.dirty = false;
+        }, function(e){ if (e.status === 409 && poging < 4) return eigen(); throw e; });
+      });
+    });
+  }
+  function vanTom(){
+    if (!bdb.link) return Promise.resolve();
+    return deelLijst(bdb.link).then(function(lijst){
+      var b = zoekIn(lijst, 'band.json'), o = zoekIn(lijst, 'opnames.json'), werk = [];
+      var vb = b && (b.rev || b.server_modified), vo = o && (o.rev || o.server_modified);
+      if (b && vb !== bstof.vBand) werk.push(deelBestand(bdb.link, '/band.json').then(function(x){ bstof.band = JSON.parse(x); bstof.vBand = vb; }));
+      if (o && vo !== bstof.vOpn) werk.push(deelBestand(bdb.link, '/opnames.json').then(function(x){ bstof.opnames = JSON.parse(x); bstof.vOpn = vo; }));
+      if (!werk.length) return;
+      return Promise.all(werk).then(function(){
+        lsSet(BSTOF_KEY, bstof);
+        if (!bHuidig || !bSongs()[bHuidig]) bOpen(bEerste());
+        else if (!(bAudio && !bAudio.paused)) bToon();        // niet storen terwijl je meespeelt
+        if ($('lib').classList.contains('open')) renderBandLib();
+      });
+    });
+  }
+  return eigen().then(function(){ return uploadMemos(); }).then(function(){ return schrijfGedeeld(false); }).then(vanTom).then(function(){
+    syncFout = null; meta.laatsteSync = Date.now(); zetDot('ok');
+  }, function(e){
+    syncFout = e.status === 401 ? 'toegang verlopen: verbind opnieuw' : (navigator.onLine ? scopeFout(e) : 'offline');
+    zetDot(navigator.onLine ? 'fout' : 'bezig', syncFout);
+  }).then(function(){ bSyncBezig = false; lsSet(BMETA_KEY, bmeta); });
+}
+
 // ---------- start ----------
 db = laadDb();
 meta = lsGet(META_KEY, {});
@@ -1374,7 +1983,9 @@ studio = lsGet(STUDIO_KEY, null);
 memoInfo = lsGet(MEMO_KEY, null);
 if (ui.vastLib !== false && window.matchMedia('(min-width: 1000px)').matches) { document.body.classList.add('vast-lib'); $('lib').classList.add('open'); }
 pasAan();
-(function(){
+if (ROL === 'band') bandStart();
+else (function(){
+  ontvangBandlid(); toonBandBadge();
   var m = location.hash.match(/song=([\w\-]+)/);
   var start = (m && db.songs[m[1]]) ? m[1] : (db.songs[ui.laatste] ? ui.laatste : eersteSong());
   modus = 'bewerk';
