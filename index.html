@@ -70,6 +70,14 @@ main{ flex:1; min-height:0; position:relative; }
 .akkoordlijn{ font-family:var(--mono); font-weight:700; color:var(--accent); font-size:.85em; margin:2px 0 8px; white-space:pre-wrap; }
 .wit{ height:.7em; }
 
+
+.toon{ flex:none; min-width:44px; text-align:center; font-family:var(--mono); font-weight:700; color:var(--ink); }
+.toon.acc{ color:var(--accent); }
+.chip.aan{ background:var(--accent); color:#1b1a17; border-color:var(--accent); }
+#weergave.passend{ overflow:hidden; padding:12px 16px; }
+#weergave.passend .blad{ max-width:none; column-gap:36px; column-rule:1px solid var(--line); }
+#weergave.passend .info{ column-span:all; margin-bottom:10px; padding:6px 10px; }
+.blok{ break-inside:avoid; -webkit-column-break-inside:avoid; page-break-inside:avoid; }
 /* ---------- lades (bibliotheek links, fragmenten rechts) ---------- */
 .scherm{ position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:20; }
 .lade{ position:fixed; top:0; bottom:0; width:min(92vw, 400px); background:var(--panel); z-index:21; display:flex; flex-direction:column; transition:transform .2s ease; padding-top:var(--top); }
@@ -93,10 +101,10 @@ main{ flex:1; min-height:0; position:relative; }
 .nummer .ord{ display:flex; gap:2px; }
 .nummer .ord button{ width:36px; height:34px; padding:0; }
 .studio-teken{ font-size:12px; color:var(--accent2); margin-left:4px; }
-@media (min-width: 1100px){
+@media (min-width: 1000px){
   /* breed scherm: bibliotheek blijft naast de tekst staan */
-  body.vast-lib .lade.links{ transform:none; position:fixed; }
-  body.vast-lib #app{ left:400px; }
+  body.vast-lib .lade.links{ transform:none; position:fixed; width:320px; }
+  body.vast-lib #app{ left:320px; }
   body.vast-lib #scherm-lib{ display:none !important; }
 }
 
@@ -328,17 +336,17 @@ function bladHtml(song, st){
     'Toonaard: ' + esc(st ? transponeer(song.key || '–', st) : (song.key || '–')) + ' · BPM: ' + esc(song.bpm || '–') +
     ' · Eerste akkoord: ' + esc(el1.eerste ? transponeer(el1.eerste, st) : '–') + ' · Laatste: ' + esc(el1.laatste ? transponeer(el1.laatste, st) : '–') +
     (st ? ' · getransponeerd ' + (st > 0 ? '+' : '') + st : '') + '</div></div>';
-  var html = '';
+  var html = '<div class="blok">';
   tekst.replace(/\r\n/g, '\n').split('\n').forEach(function(raw){
     var t = raw.trim();
     if (!t) { html += '<div class="wit"></div>'; return; }
     var sec = t.match(/^\{([^:}]+)\}$/);
-    if (sec) { html += '<div class="sectie-kop">' + esc(sec[1]) + '</div>'; return; }
+    if (sec) { html += '</div><div class="blok"><div class="sectie-kop">' + esc(sec[1]) + '</div>'; return; }
     var c = t.match(/^\{c:\s*(.*)\}$/i);
     if (c) { html += '<div class="notitie">' + esc(c[1]) + '</div>'; return; }
     html += lijnHtml(raw, st);
   });
-  return '<div class="blad">' + info + html + '</div>';
+  return '<div class="blad">' + info + html + '</div></div>';
 }
 
 // ---------- huidige song, editor en weergave ----------
@@ -389,9 +397,35 @@ function toonWeergave(){
     return;
   }
   if (modus !== 'weergave') return;
-  weergave.style.setProperty('--schaal', ui.schaal || 1);
+  weergave.classList.toggle('passend', !!ui.passend);
+  weergave.style.setProperty('--schaal', ui.passend ? 1 : schaal());
   weergave.innerHTML = bladHtml(s, ui.transpose || 0);
+  if (ui.passend) pasIn();
 }
+function schaal(){ return ui.schaal || (window.innerWidth >= 700 ? 1.15 : 1); }   // op een iPad standaard iets groter
+// Passend: de hele song op het scherm, zo groot mogelijk, in 1 tot 3 kolommen (iPad als muziekstandaard)
+function pasIn(){
+  var blad = weergave.querySelector('.blad'); if (!blad) return;
+  weergave.style.overflow = '';            // schuifbalk van de vorige song mag de meting niet storen
+  var hoog = weergave.clientHeight - 24, breed = weergave.clientWidth - 32, beste = null;
+  for (var k = 1; k <= 3; k++) {
+    if (k > 1 && breed / k < 260) break;
+    blad.style.columnCount = k;
+    var lo = 0.55, hi = 2.2;
+    for (var i = 0; i < 9; i++) {                       // binair zoeken naar de grootste lettergrootte die past
+      var mid = (lo + hi) / 2; weergave.style.setProperty('--schaal', mid);
+      if (blad.scrollHeight <= hoog && blad.scrollWidth <= breed + 2) lo = mid; else hi = mid;
+    }
+    if (!beste || lo > beste.s * 1.08) beste = { k: k, s: lo };   // meer kolommen enkel als het duidelijk groter wordt
+  }
+  // nooit kleiner dan 14 px: dan liever een beetje scrollen dan onleesbaar
+  var MIN = 14 / 17;
+  if (beste.s < MIN) beste = { k: 1, s: MIN };   // kolommen die je moet scrollen lezen niet: dan één kolom
+  blad.style.columnCount = beste.k;
+  weergave.style.setProperty('--schaal', beste.s);
+  weergave.style.overflow = blad.scrollHeight > hoog + 24 ? 'auto' : '';
+}
+window.addEventListener('resize', function(){ if (modus === 'weergave' && ui.passend) pasIn(); });
 
 editor.addEventListener('input', function(){
   var s = huidig(); if (!s) return;
@@ -432,12 +466,20 @@ function toonBalk(){
     balk.appendChild(vak);
     toonBalkAkkoorden();
   } else {
-    balk.appendChild(el('button', { klasse: 'chip sectie', tekst: '− ½', title: 'Halve toon lager', onclick: function(){ ui.transpose = (ui.transpose || 0) - 1; toonWeergave(); } }));
-    balk.appendChild(el('span', { klasse: 'zacht klein', tekst: 'Transponeer' }));
-    balk.appendChild(el('button', { klasse: 'chip sectie', tekst: '+ ½', title: 'Halve toon hoger', onclick: function(){ ui.transpose = (ui.transpose || 0) + 1; toonWeergave(); } }));
-    balk.appendChild(el('button', { klasse: 'chip sectie', tekst: 'A−', onclick: function(){ ui.schaal = Math.max(0.7, (ui.schaal || 1) - 0.1); lsSet(UI_KEY, ui); toonWeergave(); } }));
-    balk.appendChild(el('button', { klasse: 'chip sectie', tekst: 'A+', onclick: function(){ ui.schaal = Math.min(2, (ui.schaal || 1) + 0.1); lsSet(UI_KEY, ui); toonWeergave(); } }));
-    balk.appendChild(el('button', { klasse: 'chip sectie', id: 'kScroll', tekst: scrollTimer ? '■ Stop' : '▶ Scroll', onclick: wisselScroll }));
+    var tr = ui.transpose || 0;
+    function zetTr(d){ ui.transpose = tr + d; toonWeergave(); toonBalk(); }
+    balk.appendChild(el('button', { klasse: 'chip sectie', tekst: '−', title: 'Halve toon lager', onclick: function(){ zetTr(-1); } }));
+    balk.appendChild(el('span', { klasse: 'toon' + (tr ? ' acc' : ''), title: 'Toonaard (transponeren met − en +)',
+      tekst: s.key ? transponeer(s.key, tr) : (tr ? (tr > 0 ? '+' : '') + tr : 'Toon') }));
+    balk.appendChild(el('button', { klasse: 'chip sectie', tekst: '+', title: 'Halve toon hoger', onclick: function(){ zetTr(1); } }));
+    if (tr) balk.appendChild(el('button', { klasse: 'chip sectie', tekst: '↺', title: 'Terug naar de oorspronkelijke toonaard', onclick: function(){ zetTr(-tr); } }));
+    balk.appendChild(el('button', { klasse: 'chip sectie' + (ui.passend ? ' aan' : ''), tekst: '⤢ Passend', title: 'De hele song op het scherm', onclick: function(){
+      ui.passend = !ui.passend; lsSet(UI_KEY, ui); if (scrollTimer) wisselScroll(); toonWeergave(); toonBalk(); } }));
+    if (!ui.passend) {
+      balk.appendChild(el('button', { klasse: 'chip sectie', tekst: 'A−', onclick: function(){ ui.schaal = Math.max(0.7, schaal() - 0.1); lsSet(UI_KEY, ui); toonWeergave(); } }));
+      balk.appendChild(el('button', { klasse: 'chip sectie', tekst: 'A+', onclick: function(){ ui.schaal = Math.min(2.2, schaal() + 0.1); lsSet(UI_KEY, ui); toonWeergave(); } }));
+      balk.appendChild(el('button', { klasse: 'chip sectie', id: 'kScroll', tekst: scrollTimer ? '■ Stop' : '▶ Scroll', onclick: wisselScroll }));
+    }
     if (studioVersies(s).length) balk.appendChild(el('button', { klasse: 'chip sectie acc', tekst: '🎛 Studio', onclick: toonStudio }));
   }
 }
@@ -572,7 +614,7 @@ function sluitLades(){
   ['lib','frag'].forEach(function(w){ $(w).classList.remove('open'); $('scherm-' + w).classList.add('verborgen'); });
 }
 $('kLib').addEventListener('click', function(){
-  if (window.matchMedia('(min-width: 1100px)').matches) {   // breed scherm: bibliotheek vast tonen of verbergen
+  if (window.matchMedia('(min-width: 1000px)').matches) {   // breed scherm: bibliotheek vast tonen of verbergen
     var vast = !document.body.classList.contains('vast-lib');
     document.body.classList.toggle('vast-lib', vast); $('lib').classList.toggle('open', vast); ui.vastLib = vast; lsSet(UI_KEY, ui);
     if (vast) renderLib(); return;
@@ -1330,7 +1372,7 @@ auth = lsGet(AUTH_KEY, {});
 ui = lsGet(UI_KEY, {});
 studio = lsGet(STUDIO_KEY, null);
 memoInfo = lsGet(MEMO_KEY, null);
-if (ui.vastLib !== false && window.matchMedia('(min-width: 1100px)').matches) { document.body.classList.add('vast-lib'); $('lib').classList.add('open'); }
+if (ui.vastLib !== false && window.matchMedia('(min-width: 1000px)').matches) { document.body.classList.add('vast-lib'); $('lib').classList.add('open'); }
 pasAan();
 (function(){
   var m = location.hash.match(/song=([\w\-]+)/);
