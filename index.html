@@ -994,8 +994,8 @@ function speelMemo(x, vak){
 
 // ---------- muze, kopiëren, bestanden, afdrukken ----------
 // De muze: een vraag voor Claude, met wat Tom belangrijk vindt. Suggesties, nooit opdrachten.
-var MUZE_SCHRIJVERS = ['Bob Dylan', 'Jesse Welles', 'Tom Waits', 'Nick Cave', 'Leonard Cohen', 'John Prine', 'Lou Reed', 'David Bowie',
-  'John Lennon', 'Paul McCartney', 'Bruce Springsteen', 'Larkin Poe', 'Marcus King'];
+var MUZE_TOP = ['Bob Dylan', 'Jesse Welles', 'Leonard Cohen', 'Tom Waits', 'John Lennon', 'Tom Petty', 'Mick Jagger'];   // Toms top 7, in volgorde
+var MUZE_SCHRIJVERS = MUZE_TOP.concat(['Nick Cave', 'John Prine', 'Lou Reed', 'David Bowie', 'Paul McCartney', 'Bruce Springsteen', 'Larkin Poe', 'Marcus King']);
 var MUZE_FOCUS = [
   { id: 'alles', naam: 'Volledige lezing', vraag: 'Loop het nummer door in deze volgorde, en sla over wat niets oplevert:\n' +
     '1. Lezing: waar gaat het over, wat is de emotionele kern, wat werkt nu al sterk (en moet ik vooral zo laten)?\n' +
@@ -1025,8 +1025,8 @@ function muzeHouding(){
     '- Het is poëzie, kunst, geen exacte wetenschap. Vrijheid, emotie en ruwe randjes horen erbij, en de muziek, de delivery en het moment doen veel. Wat op papier niet klopt, kan gezongen net werken: benoem dat als je twijfelt.\n' +
     '- Doe suggesties, nooit opdrachten. Geef bij een voorstel liefst een paar richtingen, en zeg ook wat je vooral zou laten zoals het is.\n' +
     '- Herschrijf het nummer niet. Stel hooguit een regel of beeld voor, als mogelijkheid, en verwijs naar de regel waarover het gaat.\n' +
-    '- Mijn smaak, als achtergrond en niet als maatstaf: Bob Dylan (doorheen zijn hele carrière) en recent Jesse Welles, en verder onder meer ' +
-    MUZE_SCHRIJVERS.slice(2).join(', ') + '. Verwijs naar hun manier van schrijven, niet naar lange citaten.\n' +
+    '- Mijn smaak, als achtergrond en niet als maatstaf. Mijn top 7, in volgorde: ' + MUZE_TOP.map(function(n, i){ return (i + 1) + '. ' + n + (i === 0 ? ' (doorheen zijn hele carrière)' : ''); }).join(', ') +
+    '. Daarnaast onder meer ' + MUZE_SCHRIJVERS.slice(MUZE_TOP.length).join(', ') + '. Verwijs naar hun manier van schrijven, niet naar lange citaten.\n' +
     '- Antwoord in het Nederlands, kort en concreet. Voorstellen voor tekstregels in de taal van het nummer.';
 }
 function museTekst(s){
@@ -1062,7 +1062,7 @@ function toonMuze(){
     MUZE_FOCUS.forEach(function(f){ focusRij.appendChild(chip(f.naam, keuze.focus === f.id, function(){ keuze.focus = f.id; teken(); })); });
     brilRij.style.display = keuze.focus === 'bril' ? '' : 'none';
     brilRij.appendChild(chip('Verras me', !keuze.schrijver, function(){ keuze.schrijver = ''; teken(); }));
-    MUZE_SCHRIJVERS.forEach(function(n){ brilRij.appendChild(chip(n, keuze.schrijver === n, function(){ keuze.schrijver = n; teken(); })); });
+    MUZE_SCHRIJVERS.forEach(function(n, i){ brilRij.appendChild(chip((i < MUZE_TOP.length ? (i + 1) + ' · ' : '') + n, keuze.schrijver === n, function(){ keuze.schrijver = n; teken(); })); });
   }
   teken();
   function bewaar(){
