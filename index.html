@@ -150,6 +150,9 @@ main{ flex:1; min-height:0; position:relative; }
 .filters{ display:flex; flex-wrap:wrap; gap:6px; padding:8px 10px; border-bottom:1px solid var(--line); }
 .filters .chip{ font-family:var(--sans); font-size:13px; padding:4px 10px; }
 .filters .chip.aan{ background:var(--accent); color:#1b1a17; }
+.muze-keus{ padding:0 0 8px; border:none; }
+.veld.muze-notities{ margin-top:18px; }
+.muze-notities textarea{ font-size:15px; line-height:1.45; }
 
 /* ---------- blad onderaan (menu, songinfo, studio, sync, ...) ---------- */
 .vel{ position:fixed; left:0; right:0; bottom:0; z-index:31; background:var(--panel); border-top:1px solid var(--line); border-radius:16px 16px 0 0; max-height:calc(var(--vh) - var(--top) - 24px); display:flex; flex-direction:column; transform:translateY(105%); transition:transform .2s ease; }
@@ -623,7 +626,7 @@ $('kMenu').addEventListener('click', function(){
     s ? menuItem('✎', 'Songinfo', 'Titel, toonaard, BPM, album', toonSonginfo) : null,
     menuItem('🎛', 'Studio', s ? (sv.length ? sv.length + ' opname' + (sv.length > 1 ? 's' : '') + ' van dit nummer' : 'Opnames, mix, drums en akkoorden uit de opname') : 'Overzicht van je opnames', s && sv.length ? toonStudio : toonStudioOverzicht),
     menuItem('💭', 'Fragmenten', 'Tekstflarden, beelden, titelideeën', function(){ openLade('frag'); }),
-    s ? menuItem('🕯️', 'Kopieer voor de muze', 'Tekst zonder akkoorden, om met Claude te bespreken', function(){ kopieer(museTekst(s), 'Gekopieerd: plak het in je gesprek met Claude'); }) : null,
+    s ? menuItem('🕯️', 'Muze', (s.muze && s.muze.notities) ? 'Suggesties van Claude · notities: ' + wanneer(s.muze.notitiesTijd) : 'Laat Claude meelezen: suggesties, geen opdrachten', toonMuze) : null,
     s ? menuItem('🖨', 'Afdrukken / PDF', 'Dit nummer', function(){ drukAf([s]); }) : null,
     s ? menuItem('⤓', 'Bewaar als .txt', null, function(){ bewaarTxt(s); }) : null,
     menuItem('⤒', 'Open een .txt', 'In het huidige of een nieuw nummer', function(){ $('bestandTxt').click(); }),
@@ -990,15 +993,106 @@ function speelMemo(x, vak){
 }
 
 // ---------- muze, kopiëren, bestanden, afdrukken ----------
+// De muze: een vraag voor Claude, met wat Tom belangrijk vindt. Suggesties, nooit opdrachten.
+var MUZE_SCHRIJVERS = ['Bob Dylan', 'Jesse Welles', 'Tom Waits', 'Nick Cave', 'Leonard Cohen', 'John Prine', 'Lou Reed', 'David Bowie',
+  'John Lennon', 'Paul McCartney', 'Bruce Springsteen', 'Larkin Poe', 'Marcus King'];
+var MUZE_FOCUS = [
+  { id: 'alles', naam: 'Volledige lezing', vraag: 'Loop het nummer door in deze volgorde, en sla over wat niets oplevert:\n' +
+    '1. Lezing: waar gaat het over, wat is de emotionele kern, wat werkt nu al sterk (en moet ik vooral zo laten)?\n' +
+    '2. Interpretaties: hoe kan een gewone luisteraar dit lezen? Welke lezingen liggen voor de hand, welke verrassen, welke misverstanden zijn mogelijk?\n' +
+    '3. Structuur: draagt de opbouw (secties, volgorde, herhaling, refrein, bridge) het verhaal? Een andere volgorde voorstellen mag.\n' +
+    '4. Inhoudelijke haperingen: tegenspraak, onduidelijke verwijzingen, beelden die botsen, wissels in perspectief of tijd die niet bedoeld lijken, clichés die net te vertrouwd zijn.\n' +
+    '5. Perspectieven: wat verandert er als iemand anders het zegt, of van dichterbij of verder weg?\n' +
+    '6. Tot slot: welke één of twee dingen zou jij als eerste bekijken?' },
+  { id: 'interpretatie', naam: 'Interpretaties', vraag: 'Hoe kan een gewone luisteraar dit nummer lezen, bij een eerste en bij een tiende keer luisteren? Welke lezingen liggen voor de hand, welke verrassen, welke misverstanden zijn mogelijk? Zeg ook welke dubbelzinnigheid een rijkdom is en welke eerder verwart.' },
+  { id: 'structuur', naam: 'Structuur', vraag: 'Kijk naar de opbouw: secties, volgorde, lengte, herhaling, het refrein als anker, een eventuele bridge of ontbrekende wending. Draagt de structuur het verhaal en de emotie? Stel gerust een of twee alternatieve volgordes voor, met wat ze zouden opleveren.' },
+  { id: 'haperingen', naam: 'Haperingen', vraag: 'Wijs op inhoudelijke haperingen: tegenspraak, onduidelijke verwijzingen (wie is "you", "she", "they"?), beelden die botsen, wissels in tijd of perspectief die niet bedoeld lijken, regels die iets uitleggen wat al getoond werd, clichés die net te vertrouwd zijn. Zeg bij elk punt ook of het gezongen misschien net werkt.' },
+  { id: 'perspectief', naam: 'Perspectief', vraag: 'Wie spreekt hier, tegen wie, van hoe dichtbij, en wanneer? Stel een paar andere perspectieven voor (een ander personage, tweede persoon, terugblik, een buitenstaander, een kleiner of groter beeld) en wat elk ervan zou openen of verliezen.' },
+  { id: 'bril', naam: 'Door de bril van…', vraag: '' }];
+
+function muzeVraag(s, o){
+  var f = MUZE_FOCUS.filter(function(x){ return x.id === o.focus; })[0] || MUZE_FOCUS[0];
+  var vraag = f.vraag;
+  if (f.id === 'bril') vraag = o.schrijver
+    ? 'Lees het nummer door de bril van ' + o.schrijver + ': wat zou die schrijver hier anders doen? Denk aan beeldspraak, woordkeuze, vertelperspectief, humor, ritme van de taal, en vooral wat hij of zij weglaat. Geef een paar concrete richtingen als inspiratie; het nummer moet het mijne blijven.'
+    : 'Kies zelf één of twee schrijvers uit mijn lijst die het best bij dit nummer passen, zeg waarom, en lees het door hun bril: wat zouden zij hier anders doen? Geef een paar concrete richtingen als inspiratie; het nummer moet het mijne blijven.';
+  return muzeHouding() + '\n\nVRAAG\n' + vraag + (o.eigen && o.eigen.trim() ? '\n\nWat ik zelf wil zeggen, of waar ik twijfel:\n' + o.eigen.trim() : '') +
+    '\n\nHET NUMMER\n' + museTekst(s);
+}
+function muzeHouding(){
+  return 'Je bent mijn muze bij het schrijven van songteksten. Dit nummer is naar mijn gevoel tekstueel zo\'n 75 à 85 % af.\n\n' +
+    'HOE\n' +
+    '- Het is poëzie, kunst, geen exacte wetenschap. Vrijheid, emotie en ruwe randjes horen erbij, en de muziek, de delivery en het moment doen veel. Wat op papier niet klopt, kan gezongen net werken: benoem dat als je twijfelt.\n' +
+    '- Doe suggesties, nooit opdrachten. Geef bij een voorstel liefst een paar richtingen, en zeg ook wat je vooral zou laten zoals het is.\n' +
+    '- Herschrijf het nummer niet. Stel hooguit een regel of beeld voor, als mogelijkheid, en verwijs naar de regel waarover het gaat.\n' +
+    '- Mijn smaak, als achtergrond en niet als maatstaf: Bob Dylan (doorheen zijn hele carrière) en recent Jesse Welles, en verder onder meer ' +
+    MUZE_SCHRIJVERS.slice(2).join(', ') + '. Verwijs naar hun manier van schrijven, niet naar lange citaten.\n' +
+    '- Antwoord in het Nederlands, kort en concreet. Voorstellen voor tekstregels in de taal van het nummer.';
+}
 function museTekst(s){
   var kop = 'Titel: ' + (s.title || '(naamloos)') + (s.key ? '\nToonaard: ' + s.key : '') + (s.bpm ? '\nTempo: ' + s.bpm + ' bpm' : '');
   var body = (s.lyrics || '').replace(/\r\n/g, '\n').split('\n').map(function(raw){
     var t = raw.trim(); if (!t) return '';
     var sec = t.match(/^\{([^:}]+)\}$/); if (sec) return '— ' + sec[1] + ' —';
     var c = t.match(/^\{c:\s*(.*)\}$/i); if (c) return '(' + c[1] + ')';
+    if (/^\[[^\]]+\]$/.test(t)) return '';                      // regel met enkel akkoorden
     return raw.replace(/\[[^\]]+\]/g, '');
-  }).join('\n');
-  return kop + '\n\n' + body;
+  }).join('\n').replace(/\n{3,}/g, '\n\n');
+  return kop + '\n\n' + body.trim();
+}
+// synchroon kopiëren: zo blijft het "openen" van Claude meteen erna toegestaan (iPhone/iPad)
+function kopieerNu(tekst){
+  var t = el('textarea'); t.value = tekst; t.setAttribute('readonly', ''); t.style.position = 'fixed'; t.style.top = '-1000px'; document.body.appendChild(t);
+  t.focus(); t.select(); t.setSelectionRange(0, tekst.length);
+  var ok = false; try { ok = document.execCommand('copy'); } catch (e) {}
+  t.remove();
+  if (!ok && navigator.clipboard && window.isSecureContext) { navigator.clipboard.writeText(tekst); ok = true; }
+  return ok;
+}
+function muzeLink(){ try { return localStorage.getItem('songtool_muze_link') || 'https://claude.ai/new'; } catch (e) { return 'https://claude.ai/new'; } }
+function toonMuze(){
+  var s = huidig(); if (!s) return;
+  var m = s.muze || {}, keuze = { focus: m.focus || 'alles', schrijver: m.schrijver || '' };
+  var vraag = el('textarea', { rows: '2', placeholder: 'Optioneel: wat wil je zeggen, of waar twijfel je? Bv. "het refrein voelt te braaf"' }); vraag.value = m.vraag || '';
+  var notities = el('textarea', { rows: '6', placeholder: 'Plak hier wat de muze zei. Het blijft bij dit nummer, op al je toestellen.' }); notities.value = m.notities || '';
+  var focusRij = el('div', { klasse: 'filters muze-keus' }), brilRij = el('div', { klasse: 'filters muze-keus' });
+  function chip(tekst, aan, klik){ return el('button', { klasse: 'chip' + (aan ? ' aan' : ''), tekst: tekst, onclick: klik }); }
+  function teken(){
+    focusRij.innerHTML = ''; brilRij.innerHTML = '';
+    MUZE_FOCUS.forEach(function(f){ focusRij.appendChild(chip(f.naam, keuze.focus === f.id, function(){ keuze.focus = f.id; teken(); })); });
+    brilRij.style.display = keuze.focus === 'bril' ? '' : 'none';
+    brilRij.appendChild(chip('Verras me', !keuze.schrijver, function(){ keuze.schrijver = ''; teken(); }));
+    MUZE_SCHRIJVERS.forEach(function(n){ brilRij.appendChild(chip(n, keuze.schrijver === n, function(){ keuze.schrijver = n; teken(); })); });
+  }
+  teken();
+  function bewaar(){
+    var nieuw = { focus: keuze.focus, schrijver: keuze.schrijver, vraag: vraag.value, notities: notities.value,
+                  notitiesTijd: notities.value !== (m.notities || '') ? Date.now() : (m.notitiesTijd || 0) };
+    if (JSON.stringify(nieuw) === JSON.stringify(Object.assign({ focus: 'alles', schrijver: '', vraag: '', notities: '', notitiesTijd: 0 }, m))) return;
+    s.muze = nieuw; m = nieuw; s.updated = stempel(s.updated); gewijzigd();
+  }
+  var wacht; [vraag, notities].forEach(function(t){ t.addEventListener('input', function(){ clearTimeout(wacht); wacht = setTimeout(bewaar, 800); }); t.addEventListener('change', bewaar); });
+  function verstuur(open){
+    bewaar();
+    var ok = kopieerNu(muzeVraag(s, { focus: keuze.focus, schrijver: keuze.schrijver, eigen: vraag.value }));
+    if (open) window.open(muzeLink(), '_blank');
+    toast(ok ? (open ? 'Gekopieerd: plak het in Claude' : 'Gekopieerd') : 'Kopiëren lukt niet');
+  }
+  openVel('Muze', [
+    el('p', { klasse: 'zacht klein', tekst: 'Voor als de tekst grotendeels staat. De muze leest mee en doet suggesties; jij beslist.' }),
+    el('div', { klasse: 'veld' }, [el('span', { tekst: 'Waar kijkt de muze naar?' }), focusRij, brilRij]),
+    el('label', { klasse: 'veld' }, [el('span', { tekst: 'Jouw vraag' }), vraag]),
+    el('div', { klasse: 'knoppen' }, [el('button', { klasse: 'primair', tekst: 'Kopieer en open Claude', onclick: function(){ verstuur(true); } }),
+      el('button', { tekst: 'Alleen kopiëren', onclick: function(){ verstuur(false); } })]),
+    el('label', { klasse: 'veld muze-notities' }, [el('span', { tekst: 'Wat de muze zei' + (m.notitiesTijd ? ' · ' + wanneer(m.notitiesTijd) : '') }), notities]),
+    el('details', { klasse: 'zacht klein' }, [el('summary', { tekst: 'Instellingen' }),
+      el('p', { tekst: 'Claude openen op: ' + muzeLink() + '. Werk je in je Claude-project "Songwriting partner", plak dan de link van dat project.' }),
+      el('div', { klasse: 'knoppen' }, [
+        el('button', { tekst: 'Link wijzigen', onclick: function(){
+          var l = prompt('Link om Claude te openen (bv. je project):', muzeLink()); if (l === null) return;
+          try { if (/^https:\/\//.test(l.trim())) localStorage.setItem('songtool_muze_link', l.trim()); else localStorage.removeItem('songtool_muze_link'); } catch (e) {}
+          toast('Bewaard op dit toestel'); } }),
+        el('button', { tekst: 'Kopieer de vaste instructies', onclick: function(){ toast(kopieerNu(muzeHouding()) ? 'Gekopieerd: plak ze bij de instructies van je project' : 'Kopiëren lukt niet'); } })])])]);
 }
 function fragMuse(f){
   return 'Fragment:\n"' + f.text + '"\n\nHuidige tags — type: ' + (f.tags.type.join(', ') || '(geen)') + ', sfeer: ' + (f.tags.sfeer.join(', ') || '(geen)') +
