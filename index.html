@@ -243,6 +243,7 @@ body.typt .stapvoet, body.typt .stappenbalk{ display:none; }
 .d-melodie{ display:flex; flex-direction:column; gap:6px; padding:8px 0; border-bottom:1px solid var(--line); }
 .d-rij.d-los.rij > *{ flex:none; }
 .rij.d-los > *{ flex:none; }
+.d-stand{ text-align:center; margin:4px 0 0; }
 .toast-knop{ pointer-events:auto; background:none; border:none; color:var(--accent); font-weight:700; padding:2px 0 2px 12px; text-decoration:underline; }
 .toast{ bottom:calc(72px + var(--bot)) !important; }
 body.bandmodus .toast{ bottom:calc(24px + var(--bot)) !important; }
@@ -331,11 +332,11 @@ var LIB_KEY = 'songtool_library_v1', FRAG_KEY = 'songtool_fragments_v1', META_KE
     AUTH_KEY = 'songtool_dropbox_v1', STUDIO_KEY = 'songtool_studio_v1', UI_KEY = 'songtool_ui_v1', MEMO_KEY = 'songtool_memos_v1';
 var SECTIES = ['Intro', 'Verse', 'Pre-chorus', 'Chorus', 'Refrain', 'Bridge', 'Solo', 'Intermezzo', 'Ref-riff', 'Outro'];
 
-// Safari op een recente iPhone legt de pagina onder de statusbalk, terwijl de veilige zone 0 blijft: de kopbalk zou
-// dan onbereikbaar zijn. In de app op het beginscherm geeft iOS de veilige zone wel door.
-function opIphoneSafari(ua, los){ var m = /iPhone/.test(ua) && !los && /Version\/(\d+)/.exec(ua); return !!m && parseInt(m[1], 10) >= 26; }
-if (opIphoneSafari(navigator.userAgent, navigator.standalone)) document.documentElement.style.setProperty('--top-safari', '50px');
-function inSafariOpIos(){ return /iPhone|iPad/.test(navigator.userAgent) && !navigator.standalone; }
+// Een recente iPhone legt de pagina onder de statusbalk, ook in de app op het beginscherm, terwijl de veilige zone
+// 0 kan blijven: de kopbalk zou dan onbereikbaar zijn. Geeft iOS de zone wel door, dan wint die (zie --top).
+var SONGTOOL_VERSIE = '5 nov, 3';
+function opRecenteIphone(ua){ var m = /iPhone/.test(ua) && /Version\/(\d+)/.exec(ua); return !!m && parseInt(m[1], 10) >= 26; }
+if (opRecenteIphone(navigator.userAgent)) document.documentElement.style.setProperty('--top-safari', '50px');
 
 // ---------- hulpjes ----------
 function $(id){ return document.getElementById(id); }
@@ -1754,7 +1755,7 @@ function tekenHoofd(){
 function nietVerbonden(){
   return el('div', { klasse: 'd-kader' }, [
     el('b', { tekst: 'Dit venster is nog niet verbonden met Dropbox' }),
-    el('p', { klasse: 'zacht klein', style: 'margin:0', tekst: inSafariOpIos() ? 'Je nummers zijn niet weg. Safari en de app op je beginscherm bewaren elk apart: open de Songtool via het icoon op je beginscherm, of verbind hier ook.' : 'Je nummers staan veilig in Dropbox. Verbind om ze hier te zien.' }),
+    el('p', { klasse: 'zacht klein', style: 'margin:0', tekst: 'Je nummers staan veilig in Dropbox. Verbind om ze hier te zien: het is eenmalig op dit toestel.' }),
     el('div', { klasse: 'knoppen', style: 'margin-top:0' }, [el('button', { klasse: 'primair', tekst: '☁ Verbind met Dropbox', onclick: toonSync }),
       el('button', { tekst: 'Back-up importeren', onclick: function(){ $('bestandJson').click(); } })])]);
 }
@@ -1776,6 +1777,7 @@ function tekenStart(vak){
     tegel('Writing', 'Van idee naar afgewerkt nummer', n ? n + (n === 1 ? ' nummer' : ' nummers') : null, function(){ naarHoofd('writing'); }),
     tegel('Studio', 'Van nummer naar master', st ? st + (st === 1 ? ' opname' : ' opnames') : null, function(){ naarHoofd('studio'); })]));
   if (!verbonden()) vak.appendChild(nietVerbonden());
+  vak.appendChild(el('p', { klasse: 'zacht klein d-stand', tekst: 'Versie ' + SONGTOOL_VERSIE + ' · ' + (navigator.standalone ? 'app op het beginscherm' : 'browser') + ' · ' + (verbonden() ? 'verbonden met Dropbox' + (syncFout ? ', probleem: ' + syncFout : '') : 'niet verbonden') + ' · ' + n + ' nummers op dit toestel' }));
 }
 
 // ---------- Fragments ----------
