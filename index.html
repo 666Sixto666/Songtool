@@ -240,6 +240,9 @@ body.typt .stapvoet, body.typt .stappenbalk{ display:none; }
 .d-veld{ margin:0; }
 .d-sugg{ align-self:flex-start; background:none; color:var(--muse); border-color:var(--line); border-radius:16px; padding:5px 11px; font-size:13px; }
 .d-knoplink{ flex:1; display:flex; align-items:center; justify-content:center; text-align:center; border:1px solid var(--line); border-radius:9px; background:var(--panel2); color:var(--ink); text-decoration:none; font-size:14px; padding:6px 10px; }
+.d-melodie{ display:flex; flex-direction:column; gap:6px; padding:8px 0; border-bottom:1px solid var(--line); }
+.d-rij.d-los.rij > *{ flex:none; }
+.rij.d-los > *{ flex:none; }
 .toast-knop{ pointer-events:auto; background:none; border:none; color:var(--accent); font-weight:700; padding:2px 0 2px 12px; text-decoration:underline; }
 .toast{ bottom:calc(72px + var(--bot)) !important; }
 body.bandmodus .toast{ bottom:calc(24px + var(--bot)) !important; }
@@ -866,7 +869,7 @@ function renderFrag(){
       x.memo ? memoBlok(x) : null,
       tg, el('div', { klasse: 'ac' }, [
       huidig() && x.text && hoofd === 'song' ? el('button', { tekst: '➕ In tekst', onclick: function(){ sluitLades(); zetModus('bewerk'); voegIn(x.text + '\n', true); } }) : null,
-      x.text ? el('button', { tekst: '🕯️', title: 'Kopieer voor de muze', onclick: function(){ kopieer(fragMuse(x), 'Gekopieerd voor de muze'); } }) : null,
+      el('button', { tekst: '🕯️', title: 'Vraag het de muze', onclick: function(){ toonFragMuze(x); } }),
       el('button', { tekst: '✎', onclick: function(){ fragmentVel(x); } })])]));
   });
 }
@@ -1072,9 +1075,35 @@ var MUZE_FOCUS = [
   { id: 'interpretatie', naam: 'Interpretaties', vraag: 'Hoe kan een gewone luisteraar dit nummer lezen, bij een eerste en bij een tiende keer luisteren? Welke lezingen liggen voor de hand, welke verrassen, welke misverstanden zijn mogelijk? Zeg ook welke dubbelzinnigheid een rijkdom is en welke eerder verwart.' },
   { id: 'structuur', naam: 'Structuur', vraag: 'Kijk naar de opbouw: secties, volgorde, lengte, herhaling, het refrein als anker, een eventuele bridge of ontbrekende wending. Draagt de structuur het verhaal en de emotie? Stel gerust een of twee alternatieve volgordes voor, met wat ze zouden opleveren.' },
   { id: 'haperingen', naam: 'Haperingen', vraag: 'Wijs op inhoudelijke haperingen: tegenspraak, onduidelijke verwijzingen (wie is "you", "she", "they"?), beelden die botsen, wissels in tijd of perspectief die niet bedoeld lijken, regels die iets uitleggen wat al getoond werd, clichés die net te vertrouwd zijn. Zeg bij elk punt ook of het gezongen misschien net werkt.' },
+  { id: 'schrijfstijl', naam: 'Schrijfstijl', vraag: 'Kijk naar het schrijven zelf: woordkeuze, ritme van de taal, rijm en klank, concreet tegenover abstract, wat er uitgelegd wordt en wat er weggelaten is. Wat is hier eigen aan mijn stem? Wat klinkt geleend of braaf? Noem bij elk punt de regel.' },
   { id: 'perspectief', naam: 'Perspectief', vraag: 'Wie spreekt hier, tegen wie, van hoe dichtbij, en wanneer? Stel een paar andere perspectieven voor (een ander personage, tweede persoon, terugblik, een buitenstaander, een kleiner of groter beeld) en wat elk ervan zou openen of verliezen.' },
   { id: 'bril', naam: 'Door de bril van…', vraag: '' }];
 
+var MUZE_FRAG_FOCUS = [
+  { id: 'inhoud', naam: 'Inhoud', vraag: 'Wat zit hier in? Welk gevoel, beeld of verhaal zit eronder, en wat is nog niet gezegd? Waar wringt het op een goede manier? Noem wat je vooral zou bewaren.' },
+  { id: 'structuur', naam: 'Structuur', vraag: 'Wat zou dit in een nummer kunnen zijn: titel, openingsbeeld, refreinregel, tweede vers, bridge, slot? Geef een paar mogelijkheden en wat elk ervan zou vragen. Dit fragment hoeft geen nummer te worden.' },
+  { id: 'schrijfstijl', naam: 'Schrijfstijl', vraag: 'Kijk naar het schrijven zelf: woordkeuze, ritme van de taal, klank, concreet tegenover abstract, wat er weggelaten is. Wat is hier eigen aan mijn stem, en wat klinkt geleend of braaf?' },
+  { id: 'verder', naam: 'Waar kan dit heen?', vraag: 'Geef een paar richtingen om verder te schrijven, elk met één of twee regels als voorbeeld in de taal van het fragment. Liever uiteenlopend dan veilig. Het blijft inspiratie.' },
+  { id: 'bril', naam: 'Door de bril van…', vraag: '' }];
+function muzeFragTekst(x){
+  var r = x.memo ? (memoResultaat(x) || {}) : {}, d = [];
+  if (x.text) d.push(x.text);
+  if (r.blad && !x.text) d.push(r.blad.replace(/\[[^\]]+\]/g, ''));
+  else if (r.tekst && !x.text) d.push(r.tekst);
+  var m = [r.toonaard ? 'Toonaard: ' + r.toonaard : null, r.tempo ? 'Tempo: ± ' + r.tempo + ' bpm' : null, r.akkoordenreeks ? 'Akkoorden: ' + r.akkoordenreeks : null].filter(Boolean);
+  var t = (x.tags ? (x.tags.type || []).concat(x.tags.sfeer || [], x.tags.stanza || []) : []).filter(function(v){ return v !== 'memo'; });
+  return d.join('\n\n') + (m.length ? '\n\n' + m.join('\n') : '') + (t.length ? '\n\nMijn labels: ' + t.join(', ') : '');
+}
+function muzeFragVraag(x, o){
+  var f = MUZE_FRAG_FOCUS.filter(function(y){ return y.id === o.focus; })[0] || MUZE_FRAG_FOCUS[0], vraag = f.vraag;
+  if (f.id === 'bril') vraag = o.schrijver
+    ? 'Lees dit fragment door de bril van ' + o.schrijver + ': wat zou die schrijver ermee doen, wat zou hij of zij laten vallen, en waar zou het heen gaan? Denk aan beeldspraak, woordkeuze, perspectief, humor en ritme. Geef een paar concrete richtingen; het moet van mij blijven.'
+    : 'Kies zelf één of twee schrijvers uit mijn lijst die het best bij dit fragment passen, met eerst Bob Dylan en Jesse Welles in je achterhoofd, en zeg waarom. Wat zouden zij ermee doen? Geef een paar concrete richtingen; het moet van mij blijven.';
+  return muzeHouding('fragment') + '\n\nVRAAG\n' + vraag + (o.eigen && o.eigen.trim() ? '\n\nWat ik zelf wil zeggen, of waar ik twijfel:\n' + o.eigen.trim() : '') + '\n\nHET FRAGMENT\n' + muzeFragTekst(x);
+}
+var muzeDoel = null, muzeStart = null;
+function toonFragMuze(x){ muzeDoel = x; toonMuze(); }
+function toonMuzeOver(focus){ muzeStart = focus; toonMuze(); }
 function muzeVraag(s, o){
   var f = MUZE_FOCUS.filter(function(x){ return x.id === o.focus; })[0] || MUZE_FOCUS[0];
   var vraag = f.vraag;
@@ -1084,8 +1113,8 @@ function muzeVraag(s, o){
   return muzeHouding() + '\n\nVRAAG\n' + vraag + (o.eigen && o.eigen.trim() ? '\n\nWat ik zelf wil zeggen, of waar ik twijfel:\n' + o.eigen.trim() : '') +
     '\n\nHET NUMMER\n' + museTekst(s);
 }
-function muzeHouding(){
-  return 'Je bent mijn muze bij het schrijven van songteksten. Dit nummer is naar mijn gevoel tekstueel zo\'n 75 à 85 % af.\n\n' +
+function muzeHouding(soort){
+  return 'Je bent mijn muze bij het schrijven van songteksten. ' + (soort === 'fragment' ? 'Dit is een ruw fragment: een idee, nog geen nummer. Beoordeel het dus niet als afgewerkt werk.' : 'Dit nummer is naar mijn gevoel tekstueel zo\'n 75 à 85 % af.') + '\n\n' +
     'HOE\n' +
     '- Het is poëzie, kunst, geen exacte wetenschap. Vrijheid, emotie en ruwe randjes horen erbij, en de muziek, de delivery en het moment doen veel. Wat op papier niet klopt, kan gezongen net werken: benoem dat als je twijfelt.\n' +
     '- Doe suggesties, nooit opdrachten. Geef bij een voorstel liefst een paar richtingen, en zeg ook wat je vooral zou laten zoals het is.\n' +
@@ -1116,15 +1145,17 @@ function kopieerNu(tekst){
 }
 function muzeLink(){ try { return localStorage.getItem('songtool_muze_link') || 'https://claude.ai/new'; } catch (e) { return 'https://claude.ai/new'; } }
 function toonMuze(){
-  var s = huidig(); if (!s) return;
-  var m = s.muze || {}, keuze = { focus: m.focus || 'alles', schrijver: m.schrijver || '' };
+  var frag = muzeDoel; muzeDoel = null;
+  var s = frag || huidig(); if (!s) return;
+  var FOCUS = frag ? MUZE_FRAG_FOCUS : MUZE_FOCUS;
+  var m = s.muze || {}, keuze = { focus: muzeStart || m.focus || FOCUS[0].id, schrijver: m.schrijver || '' }; muzeStart = null;
   var vraag = el('textarea', { rows: '2', placeholder: 'Optioneel: wat wil je zeggen, of waar twijfel je? Bv. "het refrein voelt te braaf"' }); vraag.value = m.vraag || '';
-  var notities = el('textarea', { rows: '6', placeholder: 'Plak hier wat de muze zei. Het blijft bij dit nummer, op al je toestellen.' }); notities.value = m.notities || '';
+  var notities = el('textarea', { rows: '6', placeholder: 'Plak hier wat de muze zei. Het blijft hierbij, op al je toestellen.' }); notities.value = m.notities || '';
   var focusRij = el('div', { klasse: 'filters muze-keus' }), brilRij = el('div', { klasse: 'filters muze-keus' });
   function chip(tekst, aan, klik){ return el('button', { klasse: 'chip' + (aan ? ' aan' : ''), tekst: tekst, onclick: klik }); }
   function teken(){
     focusRij.innerHTML = ''; brilRij.innerHTML = '';
-    MUZE_FOCUS.forEach(function(f){ focusRij.appendChild(chip(f.naam, keuze.focus === f.id, function(){ keuze.focus = f.id; teken(); })); });
+    FOCUS.forEach(function(f){ focusRij.appendChild(chip(f.naam, keuze.focus === f.id, function(){ keuze.focus = f.id; teken(); })); });
     brilRij.style.display = keuze.focus === 'bril' ? '' : 'none';
     brilRij.appendChild(chip('Verras me', !keuze.schrijver, function(){ keuze.schrijver = ''; teken(); }));
     MUZE_SCHRIJVERS.forEach(function(n, i){ brilRij.appendChild(chip((i < MUZE_TOP.length ? (i + 1) + ' · ' : '') + n, keuze.schrijver === n, function(){ keuze.schrijver = n; teken(); })); });
@@ -1133,18 +1164,18 @@ function toonMuze(){
   function bewaar(){
     var nieuw = { focus: keuze.focus, schrijver: keuze.schrijver, vraag: vraag.value, notities: notities.value,
                   notitiesTijd: notities.value !== (m.notities || '') ? Date.now() : (m.notitiesTijd || 0) };
-    if (JSON.stringify(nieuw) === JSON.stringify(Object.assign({ focus: 'alles', schrijver: '', vraag: '', notities: '', notitiesTijd: 0 }, m))) return;
+    if (JSON.stringify(nieuw) === JSON.stringify(Object.assign({ focus: FOCUS[0].id, schrijver: '', vraag: '', notities: '', notitiesTijd: 0 }, m))) return;
     s.muze = nieuw; m = nieuw; s.updated = stempel(s.updated); gewijzigd();
   }
   var wacht; [vraag, notities].forEach(function(t){ t.addEventListener('input', function(){ clearTimeout(wacht); wacht = setTimeout(bewaar, 800); }); t.addEventListener('change', bewaar); });
   function verstuur(open){
     bewaar();
-    var ok = kopieerNu(muzeVraag(s, { focus: keuze.focus, schrijver: keuze.schrijver, eigen: vraag.value }));
+    var ok = kopieerNu((frag ? muzeFragVraag : muzeVraag)(s, { focus: keuze.focus, schrijver: keuze.schrijver, eigen: vraag.value }));
     if (open) window.open(muzeLink(), '_blank');
     toast(ok ? (open ? 'Gekopieerd: plak het in Claude' : 'Gekopieerd') : 'Kopiëren lukt niet');
   }
   openVel('Muze', [
-    el('p', { klasse: 'zacht klein', tekst: 'Voor als de tekst grotendeels staat. De muze leest mee en doet suggesties; jij beslist.' }),
+    el('p', { klasse: 'zacht klein', tekst: frag ? 'Voor een ruw idee: de muze denkt mee, met Dylan en Jesse Welles voorop in het achterhoofd. Jij beslist.' : 'Voor als de tekst grotendeels staat. De muze leest mee en doet suggesties; jij beslist.' }),
     el('div', { klasse: 'veld' }, [el('span', { tekst: 'Waar kijkt de muze naar?' }), focusRij, brilRij]),
     el('label', { klasse: 'veld' }, [el('span', { tekst: 'Jouw vraag' }), vraag]),
     el('div', { klasse: 'knoppen' }, [el('button', { klasse: 'primair', tekst: 'Kopieer en open Claude', onclick: function(){ verstuur(true); } }),
@@ -1158,10 +1189,6 @@ function toonMuze(){
           try { if (/^https:\/\//.test(l.trim())) localStorage.setItem('songtool_muze_link', l.trim()); else localStorage.removeItem('songtool_muze_link'); } catch (e) {}
           toast('Bewaard op dit toestel'); } }),
         el('button', { tekst: 'Kopieer de vaste instructies', onclick: function(){ toast(kopieerNu(muzeHouding()) ? 'Gekopieerd: plak ze bij de instructies van je project' : 'Kopiëren lukt niet'); } })])])]);
-}
-function fragMuse(f){
-  return 'Fragment:\n"' + f.text + '"\n\nHuidige tags — type: ' + (f.tags.type.join(', ') || '(geen)') + ', sfeer: ' + (f.tags.sfeer.join(', ') || '(geen)') +
-    ', stanza: ' + (f.tags.stanza.join(', ') || '(geen)') + '\n\nKun je voorstellen welke labels (type / sfeer / stanza) hier het beste bij passen, eventueel ontbrekende varianten voorstellen, en/of een verdere uitwerking suggereren?';
 }
 function kopieer(tekst, ok){
   function oud(){
@@ -1507,14 +1534,18 @@ function studioVersies(s){
   return studio.songs.filter(function(x){ return x.songtool_id === s.id || (!x.songtool_id && (norm(x.titel) === norm(s.title) || norm(x.songtool_titel) === norm(s.title))); })
     .sort(function(a, b){ return String(b.aangemaakt).localeCompare(String(a.aangemaakt)); });
 }
-var STAPNAAM = { analyse: 'Analyse', drums: 'Drums', mix: 'Mix', tekst: 'Tekst', export: 'Export' };
+var STAPNAAM = { gids: 'Gids', opname: 'Opname', drums: 'Drums', keys: 'Keys', mix: 'Mix', master: 'Master', bewaar: 'Bewaar' };
 function stapChips(x){
   return el('div', { klasse: 'statuschips' }, Object.keys(STAPNAAM).map(function(k){
     var v = (x.stappen || {})[k] || 'open';
     return el('span', { klasse: 'sc ' + v, tekst: ({ klaar: '✓ ', oud: '• ', uit: '– ', open: '○ ' }[v] || '') + STAPNAAM[k] });
   }));
 }
-function studioLink(x){ return studio.lan_url ? studio.lan_url + '/#/song/' + x.id : null; }
+function studioVolgende(x){
+  var st = x.stappen || {}, volg = st.opname === 'klaar' || !st.gids ? ['drums', 'mix', 'master', 'bewaar'] : ['gids', 'opname'];
+  return volg.filter(function(k){ return st[k] !== 'klaar' && st[k] !== 'uit'; })[0] || null;
+}
+function studioLink(x){ return studio.lan_url ? studio.lan_url + '/#/song/' + x.id + '/' + (studioVolgende(x) || 'bewaar') : null; }
 function toonStudio(){
   var s = huidig(), vs = studioVersies(s);
   if (!vs.length) { toonStudioOverzicht(); return; }
@@ -1556,7 +1587,7 @@ function toonStudio(){
     });
     if (!(x.exports || []).some(function(e){ return e.mp3; })) blok.appendChild(el('p', { klasse: 'zacht klein', tekst: 'Nog geen export: maak er een in de Studio (Exporteren, met "Ook in Dropbox"), dan kun je hier luisteren, ook buitenshuis.' }));
     var link = studioLink(x);
-    if (link) blok.appendChild(el('div', { klasse: 'knoppen' }, [el('a', { href: link, target: '_blank', rel: 'noopener', klasse: 'zacht klein', tekst: 'Open in de Studio ↗ (thuis, als de laptop aan staat)' })]));
+    if (link) blok.appendChild(el('div', { klasse: 'knoppen' }, [el('a', { href: link, target: '_blank', rel: 'noopener', klasse: 'd-knoplink', tekst: 'Open in de Studio ↗ (thuis, zelfde wifi als de laptop)' })]));
     inhoud.push(blok);
   });
   openVel('Studio · ' + (s.title || ''), inhoud);
@@ -1799,7 +1830,7 @@ function tekenFragment(vak, voet){
   var alle = (x.tags.type || []).concat(x.tags.sfeer || [], x.tags.stanza || []);
   if (alle.length) vak.appendChild(el('div', { klasse: 'statuschips' }, alle.map(function(t){ return el('span', { klasse: 'sc', tekst: t }); })));
   vak.appendChild(el('div', { klasse: 'knoppen' }, [
-    x.text ? el('button', { klasse: 'd-sugg', tekst: '✦ Vraag het de muze', onclick: function(){ kopieer(fragMuse(x), 'Gekopieerd voor de muze'); } }) : null,
+    el('button', { klasse: 'd-sugg', tekst: '✦ Vraag het de muze' + (x.muze && x.muze.notities ? ' · notities' : ''), onclick: function(){ toonFragMuze(x); } }),
     el('button', { klasse: 'plat zacht', tekst: '✎ Bewerk', onclick: function(){ fragmentVel(x); } })]));
   var inhoud = fragInhoud(x);
   voet.appendChild(el('button', { klasse: 'primair', tekst: 'Maak er een nummer van', onclick: function(){
@@ -1818,7 +1849,7 @@ function kiesNummer(x, inhoud){
     return el('button', { klasse: 'd-rijknop', onclick: function(){
       sluitVel();
       if (inhoud) zetTekst(s, ((s.lyrics || '').replace(/\s+$/, '') + '\n\n' + inhoud + '\n').replace(/^\s+/, ''), 'fragment toegevoegd');
-      else { onthoud(s); s.schrijf = Object.assign({}, s.schrijf, { melodie: (schrijfVan(s).melodie || []).concat([x.id]) }); s.updated = stempel(s.updated); gewijzigd(); }
+      else { onthoud(s); s.schrijf = Object.assign({}, s.schrijf, { melodie: melodieLijst(s).concat([{ id: x.id, sectie: '' }]) }); s.updated = stempel(s.updated); gewijzigd(); }
       toast('In ' + (s.title || 'het nummer') + ' gezet. Ongedaan maken kan vanuit het nummer.');
     } }, [el('span', { klasse: 'd-groei d-kort', tekst: s.title || '(naamloos)' }), el('span', { klasse: 'zacht', tekst: '›' })]);
   }))]);
@@ -1920,6 +1951,7 @@ function stapVorm(vak, s){
       el('button', { klasse: 'd-klein', tekst: '↑', 'aria-label': 'Hoger', disabled: i === 0 ? 'disabled' : null, onclick: function(){ var k = b.lijst.splice(i, 1)[0]; b.lijst.splice(i - 1, 0, k); zetVorm(s, b); } }),
       el('button', { klasse: 'd-klein', tekst: '↓', 'aria-label': 'Lager', disabled: i === b.lijst.length - 1 ? 'disabled' : null, onclick: function(){ var k = b.lijst.splice(i, 1)[0]; b.lijst.splice(i + 1, 0, k); zetVorm(s, b); } })]);
   })));
+  vak.appendChild(el('div', { klasse: 'rij d-los' }, [suggestieKnop(s, vormSuggesties(s)), el('button', { klasse: 'd-sugg', tekst: '✦ Vraag het de muze', onclick: function(){ toonMuzeOver('structuur'); } })]));
   vak.appendChild(el('div', { klasse: 'knoppen' }, [el('button', { tekst: '＋ Sectie', onclick: function(){
     var vrij = el('input', { type: 'text', placeholder: 'Eigen naam', 'aria-label': 'Eigen naam' });
     function voegToe(n){ sluitVel(); var c = blokVan(s.lyrics); c.lijst.push({ kop: '{' + n + '}', naam: n, regels: [] }); zetVorm(s, c); }
@@ -1935,6 +1967,52 @@ function vormMenu(s, i){
     el('div', { klasse: 'knoppen' }, [
       el('button', { tekst: 'Herhaal deze sectie', onclick: function(){ b.lijst.splice(i + 1, 0, { kop: x.kop, naam: x.naam, regels: x.regels.slice() }); sluitVel(); zetVorm(s, b, x.naam + ' herhaald'); } }),
       el('button', { klasse: 'gevaar', tekst: 'Verwijder', onclick: function(){ b.lijst.splice(i, 1); sluitVel(); zetVorm(s, b, x.naam + ' verwijderd'); } })])]);
+}
+
+// Suggesties: uit wat er echt staat, altijd een aanbod. "Nee, dank je" komt niet terug.
+function tekstRegels(rg){ return rg.filter(function(r){ var t = r.trim(); return t && !/^\{.*\}$/.test(t) && !/^\[[^\]]+\]$/.test(t); }); }
+function vormSuggesties(s){
+  var b = blokVan(s.lyrics).lijst, uit = [], REF = /refrein|chorus|hook/i, BRUG = /bridge|brug|middle/i;
+  if (b.length < 2) return uit;
+  var refs = b.filter(function(x){ return REF.test(x.naam); });
+  if (b.length >= 3 && !refs.length) uit.push({ id: 'geen-refrein', tekst: 'Er is geen refrein.', waarom: 'Dat kan perfect: Dylan draagt een lang nummer vaak op één terugkerende regel. Wil je een anker, dan volstaat misschien zo\'n regel.' });
+  if (refs.length) {
+    var voor = 0; for (var i = 0; i < b.length && !REF.test(b[i].naam); i++) voor += tekstRegels(b[i].regels).length;
+    if (voor > 16) uit.push({ id: 'refrein-laat', tekst: 'Het refrein komt pas na ' + voor + ' regels.', waarom: 'Op de plaat kan dat lang lijken. Live draagt het misschien net wel.' });
+  }
+  var verzen = b.filter(function(x){ return /vers|verse|couplet/i.test(x.naam); });
+  for (var k = 1; k < verzen.length; k++) {
+    var a = tekstRegels(verzen[k - 1].regels).length, c = tekstRegels(verzen[k].regels).length;
+    if (a && c && Math.max(a, c) >= 2 * Math.min(a, c)) { uit.push({ id: 'vers-lengte-' + k, tekst: verzen[k].naam + ' heeft ' + c + ' regels, ' + verzen[k - 1].naam + ' ' + a + '.', waarom: 'Bewust een andere ademhaling, of is er nog iets op zoek naar zijn plek?' }); break; }
+  }
+  if (refs.length >= 3 && !b.some(function(x){ return BRUG.test(x.naam); })) uit.push({ id: 'geen-wending', tekst: refs.length + ' keer een refrein, geen wending.', waarom: 'Een bridge, of het laatste refrein net anders, kan het einde iets geven om naartoe te gaan.' });
+  return uit;
+}
+function feelSuggesties(s){
+  var uit = [], bpm = parseFloat(s.bpm) || 0, sv = schrijfVan(s), f = memoFrag(sv.idee), r = f ? (memoResultaat(f) || {}) : {};
+  if (r.feel && r.feel !== sv.feel) uit.push({ id: 'feel-' + r.feel, tekst: 'In je opname hoor ik ' + FEELS[r.feel].toLowerCase() + '.', waarom: 'Gemeten in je spel op de idee-opname.', probeer: function(){ s.schrijf = Object.assign({}, s.schrijf, { feel: r.feel }); } });
+  if (r.tempo && bpm && Math.abs(r.tempo - bpm) / bpm > 0.04 && Math.abs(r.tempo * 2 - bpm) / bpm > 0.04 && Math.abs(r.tempo / 2 - bpm) / bpm > 0.04)
+    uit.push({ id: 'tempo-' + r.tempo, tekst: 'Je opname zit rond ' + r.tempo + ' BPM, hier staat ' + bpm + '.', waarom: r.bereik ? 'Je bewoog tussen ' + Math.round(r.bereik[0]) + ' en ' + Math.round(r.bereik[1]) + ' BPM.' : 'Gemeten op de idee-opname.', probeer: function(){ s.bpm = String(r.tempo); } });
+  if (bpm >= 150) uit.push({ id: 'half-' + bpm, tekst: bpm + ' BPM kan ook ' + Math.round(bpm / 2) + ' voelen.', waarom: 'Hetzelfde nummer, maar een andere click voor de band.', probeer: function(){ s.bpm = String(Math.round(bpm / 2)); } });
+  if (bpm && bpm <= 65) uit.push({ id: 'dubbel-' + bpm, tekst: bpm + ' BPM kan ook ' + (bpm * 2) + ' voelen.', waarom: 'Op een traag tempo is een dubbele click soms makkelijker om strak op te spelen.', probeer: function(){ s.bpm = String(bpm * 2); } });
+  var rg = tekstRegels(String(s.lyrics || '').split('\n')).map(function(r){ return r.replace(/\[[^\]]*\]/g, '').trim().split(/\s+/).length; });
+  var gem = rg.length ? rg.reduce(function(a, c){ return a + c; }, 0) / rg.length : 0;
+  if (gem >= 10 && bpm >= 125) uit.push({ id: 'dicht-' + bpm, tekst: 'Gemiddeld ' + Math.round(gem) + ' woorden per regel op ' + bpm + ' BPM.', waarom: 'Dat kan: Jesse Welles en Dylan laten het zo tuimelen. Zing het even op dit tempo en voel of de woorden nog ademen.' });
+  return uit;
+}
+function suggestieKnop(s, lijst){
+  var nee = schrijfVan(s).afgewezen || [];
+  lijst = lijst.filter(function(x){ return nee.indexOf(x.id) < 0; });
+  if (!lijst.length) return null;
+  return el('button', { klasse: 'd-sugg', tekst: '✦ ' + lijst.length + (lijst.length === 1 ? ' suggestie' : ' suggesties') + ', als je wil', onclick: function(){
+    function rij(x){
+      return el('div', { klasse: 'studio-versie' }, [el('b', { tekst: x.tekst }), el('p', { klasse: 'zacht klein', style: 'margin:4px 0 8px', tekst: x.waarom }),
+        el('div', { klasse: 'knoppen', style: 'margin-top:0' }, [
+          x.probeer ? el('button', { tekst: 'Probeer', onclick: function(){ sluitVel(); wijzigVeld(s, x.probeer); toastActie('Geprobeerd', 'Ongedaan', maakOngedaan); } }) : null,
+          el('button', { klasse: 'plat zacht', tekst: x.probeer ? 'Nee, dank je' : 'Oké', onclick: function(){ sluitVel(); wijzigVeld(s, function(){ s.schrijf = Object.assign({}, s.schrijf, { afgewezen: (schrijfVan(s).afgewezen || []).concat([x.id]) }); }); } })])]);
+    }
+    openVel('Suggesties', lijst.map(rij));
+  } });
 }
 
 // Opnames in een stap: altijd een gewoon fragment, gekoppeld aan het nummer.
@@ -1953,16 +2031,26 @@ function kiesMemo(titel, koppel){
     return el('button', { klasse: 'd-rijknop', onclick: function(){ sluitVel(); koppel(f); } }, [el('span', { klasse: 'd-groei' }, [el('span', { klasse: 'd-kort', tekst: fragTitel(f) }), el('span', { klasse: 'zacht klein', tekst: fragMeta(f) })])]);
   }))] : [el('p', { klasse: 'zacht', tekst: 'Nog geen opnames in Fragments.' })]);
 }
+function melodieLijst(s){ return (schrijfVan(s).melodie || []).map(function(m){ return typeof m === 'string' ? { id: m, sectie: '' } : m; }); }
 function stapMelodie(vak, s){
-  var ids = schrijfVan(s).melodie || [];
-  function koppel(f){ wijzigVeld(s, function(){ s.schrijf = Object.assign({}, s.schrijf, { melodie: (schrijfVan(s).melodie || []).concat([f.id]) }); }); }
+  var lijst = melodieLijst(s), namen = [], gezien = {};
+  blokVan(s.lyrics).lijst.forEach(function(b){ if (!gezien[b.naam]) { gezien[b.naam] = 1; namen.push(b.naam); } });
+  namen.push('');
+  function koppel(sectie){ return function(f){ wijzigVeld(s, function(){ s.schrijf = Object.assign({}, s.schrijf, { melodie: melodieLijst(s).concat([{ id: f.id, sectie: sectie }]) }); }); }; }
   vak.appendChild(el('h2', { klasse: 'd-vraag', tekst: 'Hoe gaat de melodie?' }));
-  ids.forEach(function(id, i){ var f = memoFrag(id); if (f && f.memo) vak.appendChild(memoKaart(f, function(){
-    wijzigVeld(s, function(){ var l = (schrijfVan(s).melodie || []).slice(); l.splice(i, 1); s.schrijf = Object.assign({}, s.schrijf, { melodie: l }); }); })); });
-  if (!ids.length) vak.appendChild(el('p', { klasse: 'zacht', tekst: 'Zing of neurie ze in. De opname is de melodie.' }));
-  vak.appendChild(el('div', { klasse: 'knoppen' }, [
-    el('button', { tekst: '🎙 Neem op', onclick: function(){ naMemo = koppel; opnemen(null); } }),
-    el('button', { tekst: 'Kies uit Fragments', onclick: function(){ kiesMemo('Kies een opname', koppel); } })]));
+  vak.appendChild(el('p', { klasse: 'zacht klein', tekst: 'Zing of neurie per sectie. De opname is de melodie.' }));
+  vak.appendChild(el('div', { klasse: 'd-lijst' }, namen.map(function(n){
+    var bij = lijst.filter(function(m){ return (m.sectie || '') === n; });
+    var blok = el('div', { klasse: 'd-melodie' }, [el('div', { klasse: 'd-rij d-los' }, [
+      el('span', { klasse: 'd-groei d-kort', tekst: n || 'Hele nummer' }),
+      el('button', { klasse: 'd-klein', tekst: '🎙', 'aria-label': 'Neem op voor ' + (n || 'het hele nummer'), onclick: function(){ naMemo = koppel(n); opnemen(null); } }),
+      el('button', { klasse: 'd-klein', tekst: '＋', 'aria-label': 'Kies uit Fragments', onclick: function(){ kiesMemo('Kies een opname', koppel(n)); } })])]);
+    bij.forEach(function(m){
+      var f = memoFrag(m.id);
+      if (f && f.memo) blok.appendChild(memoKaart(f, function(){ wijzigVeld(s, function(){ s.schrijf = Object.assign({}, s.schrijf, { melodie: melodieLijst(s).filter(function(y){ return y !== m && !(y.id === m.id && (y.sectie || '') === n); }) }); }); }));
+    });
+    return blok;
+  })));
 }
 function stapFeel(vak, s){
   var sv = schrijfVan(s), bpm = parseFloat(s.bpm) || 0;
@@ -1985,6 +2073,7 @@ function stapFeel(vak, s){
   richting.addEventListener('change', function(){ wijzigVeld(s, function(){ s.schrijf = Object.assign({}, s.schrijf, { richting: richting.value.trim() }); }); });
   vak.appendChild(el('label', { klasse: 'veld d-veld' }, [el('span', { tekst: 'Toonaard' }), toon]));
   vak.appendChild(el('label', { klasse: 'veld d-veld' }, [el('span', { tekst: 'Richting, in een paar woorden' }), richting]));
+  var sg = suggestieKnop(s, feelSuggesties(s)); if (sg) vak.appendChild(sg);
   vak.appendChild(el('p', { klasse: 'zacht klein', tekst: 'Dit is een eerste richting. Drums en keys komen pas in de Studio.' }));
 }
 function stapIdee(vak, s){
@@ -1994,11 +2083,12 @@ function stapIdee(vak, s){
   vak.appendChild(el('p', { klasse: 'zacht', tekst: 'Zang en akoestische gitaar, zonder click.' }));
   if (f && f.memo) {
     vak.appendChild(memoKaart(f, function(){ wijzigVeld(s, function(){ s.schrijf = Object.assign({}, s.schrijf); delete s.schrijf.idee; }); }));
-    var r = memoResultaat(f) || {}, kort = r.toonaard ? toonaardKort(r.toonaard) : '', t = r.tempo ? String(Math.round(r.tempo)) : '';
-    if ((t && t !== String(s.bpm || '')) || (kort && kort !== (s.key || ''))) {
-      vak.appendChild(el('button', { klasse: 'd-sugg', tekst: '✦ Neem over: ' + [t ? '± ' + t + ' BPM' : null, kort || null].filter(Boolean).join(', '), onclick: function(){
-        wijzigVeld(s, function(){ if (t) s.bpm = t; if (kort) s.key = kort; }); toastActie('Overgenomen', 'Ongedaan', maakOngedaan); } }));
+    var r = memoResultaat(f) || {}, kort = r.toonaard ? toonaardKort(r.toonaard) : '', t = r.tempo ? String(Math.round(r.tempo)) : '', fl = r.feel && FEELS[r.feel] ? r.feel : '';
+    if ((t && t !== String(s.bpm || '')) || (kort && kort !== (s.key || '')) || (fl && fl !== schrijfVan(s).feel)) {
+      vak.appendChild(el('button', { klasse: 'd-sugg', tekst: '✦ Neem over: ' + [t ? t + ' BPM' : null, fl ? FEELS[fl].toLowerCase() : null, kort || null].filter(Boolean).join(', '), onclick: function(){
+        wijzigVeld(s, function(){ if (t) s.bpm = t; if (kort) s.key = kort; if (fl) s.schrijf = Object.assign({}, s.schrijf, { feel: fl }); }); toastActie('Overgenomen', 'Ongedaan', maakOngedaan); } }));
     }
+    if (r.bereik) vak.appendChild(el('p', { klasse: 'zacht klein', tekst: 'Je bewoog tussen ' + Math.round(r.bereik[0]) + ' en ' + Math.round(r.bereik[1]) + ' BPM.' }));
   }
   vak.appendChild(el('div', { klasse: 'knoppen' }, [
     el('button', { tekst: f ? '🎙 Opnieuw' : '🎙 Neem op', onclick: function(){ naMemo = koppel; opnemen(null); } }),
@@ -2014,13 +2104,23 @@ function stapVast(vak, s, voet){
     var ok = stapKlaar(s, x[0]);
     return el('button', { klasse: 'd-rijknop', onclick: function(){ naarStap(x[0]); } }, [el('span', { klasse: ok ? 'd-ok' : 'zacht', tekst: ok ? '✓' : '○' }), el('span', { klasse: 'd-groei', tekst: x[1] }), el('span', { klasse: 'zacht', tekst: '›' })]);
   })));
-  vak.appendChild(el('p', { klasse: 'zacht klein', tekst: veranderd ? 'Alles mag open blijven. Vastzetten bewaart een vaste kopie; je kunt daarna gewoon verder schrijven.' : 'Bewaard ' + wanneer(l.tijd) + '. Schrijf je verder, dan wordt het versie ' + (l.versie + 1) + '. Neem het nu op: zet je GarageBand-project in Dropbox › Apps › Songtool › Studio › Nieuwe opnames.' }));
+  var sv2 = studioVersies(s)[0], heeftIdee = !!memoFrag(sv.idee), verstuurd = !!sv.studio;
+  var tekst = veranderd ? 'Alles mag open blijven. Vastzetten bewaart een vaste kopie; je kunt daarna gewoon verder schrijven.'
+    : 'Bewaard ' + wanneer(l.tijd) + '. Schrijf je verder, dan wordt het versie ' + (l.versie + 1) + '.';
+  if (!veranderd && sv2) tekst += ' Dit nummer staat in de Studio.';
+  else if (!veranderd && verstuurd) tekst += ' Onderweg naar de Studio: de laptop pakt je idee-opname op zodra die aan staat.';
+  else if (!veranderd && !heeftIdee) tekst += ' Zonder idee-opname: neem het op in GarageBand en zet het project in Dropbox › Apps › Songtool › Studio › Nieuwe opnames.';
+  vak.appendChild(el('p', { klasse: 'zacht klein', tekst: tekst }));
   if (veranderd) voetVolgende(voet, 'Zet vast als versie ' + (vast.length + 1), function(){
     wijzigVeld(s, function(){
       var n = versieVan(s, 'vastgezet'); n.versie = vast.length + 1;
       s.schrijf = Object.assign({}, s.schrijf, { vast: vast.concat([n]) });
     });
     toastActie('Versie ' + (vast.length + 1) + ' staat vast', 'Ongedaan', maakOngedaan);
+  });
+  else if (!sv2 && !verstuurd && heeftIdee) voetVolgende(voet, 'Stuur naar de Studio', function(){
+    wijzigVeld(s, function(){ s.schrijf = Object.assign({}, s.schrijf, { studio: { versie: l.versie, tijd: Date.now() } }); });
+    toastActie('Onderweg naar de Studio', 'Ongedaan', maakOngedaan);
   });
   else voetVolgende(voet, 'Naar de Studio', function(){ naarHoofd('studio'); });
 }
@@ -2041,12 +2141,12 @@ function tekenStudioLijst(vak, voet){
   vak.appendChild(el('h3', { klasse: 'd-album', tekst: 'Opnames' }));
   vak.appendChild(el('div', { klasse: 'd-lijst' }, studio.songs.slice().sort(function(a, b){ return String(b.aangemaakt).localeCompare(String(a.aangemaakt)); }).map(function(x){
     var s = null; Object.keys(db.songs).forEach(function(id){ if (!s && studioVersies(db.songs[id]).indexOf(x) >= 0) s = db.songs[id]; });
-    var st = x.stappen || {}, open = Object.keys(STAPNAAM).filter(function(k){ return st[k] !== 'klaar'; })[0];
+    var open = studioVolgende(x);
     return el('button', { klasse: 'd-rijknop', onclick: function(){ if (s) { openSong(s.id, true); toonStudio(); } else toonStudioOverzicht(); } }, [
       el('span', { klasse: 'd-groei d-kort', tekst: x.titel }), el('span', { klasse: 'd-badge ' + (open ? 'nu' : 'ok'), tekst: open ? STAPNAAM[open] : 'Klaar' }), el('span', { klasse: 'zacht', tekst: '›' })]);
   })));
   vak.appendChild(el('p', { klasse: 'zacht klein', tekst: 'Bijgewerkt ' + wanneer(studio.bijgewerkt_ms) + '. Nieuwe opname: zet je GarageBand-project in Dropbox › Apps › Songtool › Studio › Nieuwe opnames.' }));
-  if (studio.lan_url) voet.appendChild(el('a', { klasse: 'd-knoplink', href: studio.lan_url, target: '_blank', rel: 'noopener', tekst: 'Open de Studio ↗ (thuis, laptop aan)' }));
+  if (studio.lan_url) voet.appendChild(el('a', { klasse: 'd-knoplink', href: studio.lan_url, target: '_blank', rel: 'noopener', tekst: 'Open de Studio ↗ (thuis, zelfde wifi)' }));
 }
 
 $('kUndo').addEventListener('click', maakOngedaan);
